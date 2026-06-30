@@ -79,7 +79,7 @@ const CONFIG = {
   SPREADSHEET_ID: '1li0ycYSk1Y2d19bMfx9KUqJrUnUDszoPU3iCi1T9IhY',
   SCHOOL_NAME: 'MGMP PAI Kab Bangkalan',
   APP_NAME: 'EXAMUNA',
-  QR_API: 'https://api.qrserver.com/v1/create-qr-code/'
+  // QR API removed
 };
 
 // NOTE: adminKey checks removed — API operations do not require an admin key.
@@ -160,8 +160,6 @@ function doGet(e) {
     return getBrowserPage();
   } else if (page === 'admin') {
     return getAdminDashboard();
-  } else if (page === 'qr') {
-    return generateQRPage(e.parameter.url);
   }
   
   return getBrowserPage();
@@ -614,38 +612,6 @@ function logViolationDirect(violationData) {
   }
 }
 
-function updateViolationCount(sessionId) {
-  try {
-    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sessionsSheet = ss.getSheetByName('Sessions');
-    const violationsSheet = ss.getSheetByName('Violations');
-    
-    if (!sessionsSheet || !violationsSheet) return;
-    
-    const sessionData = sessionsSheet.getDataRange().getValues();
-    const violationData = violationsSheet.getDataRange().getValues();
-    
-    // Count violations for this session
-    let count = 0;
-    for (let i = 1; i < violationData.length; i++) {
-      if (violationData[i][1] === sessionId) {
-        count++;
-      }
-    }
-    
-    // Update in sessions sheet
-    for (let i = 1; i < sessionData.length; i++) {
-      if (sessionData[i][0] === sessionId) {
-        sessionsSheet.getRange(i + 1, 10).setValue(count);
-        break;
-      }
-    }
-    
-  } catch (error) {
-    Logger.log('Error updating violation count: ' + error);
-  }
-}
-
 // ===========================================
 // HTML PAGES
 // ===========================================
@@ -659,105 +625,7 @@ function getBrowserPage() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// ===========================================
-// QR CODE GENERATOR
-// ===========================================
-
-function generateQRCode(examUrl, size = 300) {
-  // Generate QR Code URL using QR Server API
-  const qrUrl = `${CONFIG.QR_API}?size=${size}x${size}&data=${encodeURIComponent(examUrl)}`;
-  
-  return {
-    qrUrl: qrUrl,
-    examUrl: examUrl,
-    generatedAt: new Date().toISOString()
-  };
-}
-
-function generateQRPage(url) {
-  if (!url) {
-    return HtmlService.createHtmlOutput('<h3>Error: URL tidak ditemukan</h3>');
-  }
-  
-  const qr = generateQRCode(url);
-  
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>QR Code - Exam Access</title>
-      <style>
-        body {
-          font-family: 'Segoe UI', Tahoma, sans-serif;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: 100vh;
-          margin: 0;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-        }
-        .container {
-          text-align: center;
-          background: white;
-          padding: 40px;
-          border-radius: 20px;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        .title {
-          color: #333;
-          margin-bottom: 10px;
-        }
-        .subtitle {
-          color: #666;
-          margin-bottom: 30px;
-        }
-        img {
-          border: 5px solid #667eea;
-          border-radius: 15px;
-          margin: 20px 0;
-        }
-        .url {
-          background: #f0f0f0;
-          padding: 15px;
-          border-radius: 10px;
-          font-family: monospace;
-          color: #333;
-          word-break: break-all;
-          margin-top: 20px;
-        }
-        .btn {
-          margin-top: 20px;
-          padding: 12px 30px;
-          background: #667eea;
-          color: white;
-          border: none;
-          border-radius: 8px;
-          font-size: 16px;
-          cursor: pointer;
-          text-decoration: none;
-          display: inline-block;
-        }
-        .btn:hover {
-          background: #5568d3;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1 class="title">Akses Ujian</h1>
-        <p class="subtitle">Scan QR Code dengan ExamBrowser</p>
-        <img src="${qr.qrUrl}" alt="QR Code" width="300" height="300">
-        <div class="url">${url}</div>
-        <a href="${url}" class="btn" target="_blank">Buka Link Langsung</a>
-      </div>
-    </body>
-    </html>
-  `;
-  
-  return HtmlService.createHtmlOutput(html);
-}
+// QR Code generator removed
 
 // ===========================================
 // SESSION MANAGEMENT
@@ -865,7 +733,8 @@ function createExamLink(examData) {
     }
     
     const linkId = Utilities.getUuid().substring(0, 8).toUpperCase();
-    const qrData = generateQRCode(examData.url);
+    // QR generation removed — simpan kosongkan QR URL
+    const qrData = { qrUrl: '' };
     
     sheet.appendRow([
       linkId,
@@ -1027,6 +896,160 @@ function getSessionAnalytics() {
   } catch (error) {
     Logger.log('Error getting analytics: ' + error);
     return null;
+  }
+}
+
+// ===========================================
+// GURU PASSWORD MANAGEMENT (ADMINS SHEET)
+// ===========================================
+
+/**
+ * Struktur Sheet ADMINS:
+ * Kolom A: NPSN
+ * Kolom B: Nama Guru
+ * Kolom C: Password (disimpan sebagai plain text atau bisa di-hash)
+ */
+
+function ensureAdminsSheet() {
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    let sheet = ss.getSheetByName('ADMINS');
+    
+    if (!sheet) {
+      sheet = ss.insertSheet('ADMINS');
+      sheet.appendRow(['NPSN', 'Nama Guru', 'Password', 'Timestamp']);
+      
+      // Format header
+      const headerRange = sheet.getRange(1, 1, 1, 4);
+      headerRange.setBackground('#0052CC');
+      headerRange.setFontColor('#ffffff');
+      headerRange.setFontWeight('bold');
+      
+      // Set column widths
+      sheet.setColumnWidth(1, 100); // NPSN
+      sheet.setColumnWidth(2, 200); // Nama Guru
+      sheet.setColumnWidth(3, 200); // Password
+      sheet.setColumnWidth(4, 150); // Timestamp
+      
+      sheet.setFrozenRows(1);
+    }
+    
+    return sheet;
+  } catch (error) {
+    Logger.log('Error ensuring ADMINS sheet: ' + error);
+    return null;
+  }
+}
+
+/**
+ * Check if guru sudah punya password di sheet ADMINS
+ * @param {string} npsn - NPSN guru
+ * @returns {object} {exists: boolean, nama: string}
+ */
+function checkGuruPassword(npsn) {
+  try {
+    const sheet = ensureAdminsSheet();
+    if (!sheet) return { exists: false, error: 'Sheet ADMINS tidak ditemukan' };
+    
+    const data = sheet.getDataRange().getValues();
+    
+    // Loop cari NPSN di kolom A
+    for (let i = 1; i < data.length; i++) {
+      const rowNpsn = (data[i][0] || '').toString().trim();
+      if (rowNpsn === npsn) {
+        return {
+          exists: true,
+          nama: (data[i][1] || '').toString().trim(),
+          password: (data[i][2] || '').toString().trim()
+        };
+      }
+    }
+    
+    return { exists: false };
+    
+  } catch (error) {
+    Logger.log('Error checking guru password: ' + error);
+    return { exists: false, error: error.toString() };
+  }
+}
+
+/**
+ * Save guru password baru ke sheet ADMINS
+ * SELALU TAMBAH BARIS BARU (tidak pernah overwrite)
+ * Sehingga history login/registrasi guru tersimpan
+ * @param {string} npsn - NPSN guru
+ * @param {string} nama - Nama guru
+ * @param {string} password - Password baru
+ * @returns {object} {success: boolean, message: string}
+ */
+function saveGuruPassword(npsn, nama, password) {
+  try {
+    if (!npsn || !password) {
+      return { success: false, error: 'NPSN dan password harus diisi' };
+    }
+    
+    const sheet = ensureAdminsSheet();
+    if (!sheet) return { success: false, error: 'Sheet ADMINS tidak ditemukan' };
+    
+    // SELALU TAMBAH BARIS BARU (tidak cek duplikat, tidak update)
+    sheet.appendRow([npsn, nama, password, new Date()]);
+    
+    return {
+      success: true,
+      message: 'Password berhasil disimpan',
+      isNew: true
+    };
+    
+  } catch (error) {
+    Logger.log('Error saving guru password: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Verify password guru dari sheet ADMINS
+ * SELAMA ada kecocokan NPSN dan PASSWORD (dari baris mana pun), BISA LOGIN
+ * Tidak hanya yang terakhir, tapi SEMUA baris yang cocok bisa dipakai
+ * @param {string} npsn - NPSN guru
+ * @param {string} password - Password untuk diverifikasi
+ * @returns {object} {valid: boolean, nama: string, message: string}
+ */
+function verifyGuruPassword(npsn, password) {
+  try {
+    if (!npsn || !password) {
+      return { valid: false, message: 'NPSN dan password harus diisi' };
+    }
+    
+    const sheet = ensureAdminsSheet();
+    if (!sheet) return { valid: false, message: 'Sheet ADMINS tidak ditemukan' };
+    
+    const data = sheet.getDataRange().getValues();
+    
+    // Loop SEMUA baris, cek SEMUA password untuk NPSN yang diberikan
+    for (let i = 1; i < data.length; i++) {
+      const rowNpsn = (data[i][0] || '').toString().trim();
+      const rowPassword = (data[i][2] || '').toString().trim();
+      const rowNama = (data[i][1] || '').toString().trim();
+      
+      // Jika NPSN cocok DAN password cocok → LOGIN BERHASIL
+      if (rowNpsn === npsn && rowPassword === password) {
+        return {
+          valid: true,
+          nama: rowNama,
+          message: 'Password benar, login berhasil'
+        };
+      }
+    }
+    
+    // Jika tidak ada baris yang cocok
+    return {
+      valid: false,
+      message: 'NPSN atau password salah'
+    };
+    
+  } catch (error) {
+    Logger.log('Error verifying guru password: ' + error);
+    return { valid: false, message: 'Error: ' + error.toString() };
   }
 }
 
@@ -1232,8 +1255,7 @@ function testCreateExamLink() {
 }
 
 function testGenerateQR() {
-  const qr = generateQRCode('https://script.google.com/your-web-app-url');
-  Logger.log('QR URL: ' + qr.qrUrl);
+  Logger.log('QR generation removed.');
 }
 
 /**
@@ -1401,4 +1423,165 @@ function setupSheetHeaders() {
 
   // Feedback log
   Logger.log('setupSheetHeaders completed for spreadsheet: ' + CONFIG.SPREADSHEET_ID);
+}
+
+// ===========================================
+// VALIDASI SHEET ADMINS (Kolom A & C)
+// ===========================================
+
+/**
+ * VALIDASI SHEET ADMINS
+ * - Kolom A (NPSN): Harus 8 digit angka
+ * - Kolom C (Password): Bebas (tidak boleh kosong)
+ * 
+ * Run dari Apps Script editor: pilih fungsi validateAdminsSheet lalu Run
+ */
+function validateAdminsSheet() {
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('ADMINS');
+    
+    if (!sheet) {
+      Logger.log('❌ Sheet ADMINS tidak ditemukan');
+      return { success: false, error: 'Sheet ADMINS tidak ditemukan' };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    
+    if (data.length <= 1) {
+      Logger.log('⚠️  Sheet ADMINS kosong (hanya header)');
+      return { success: true, message: 'Sheet kosong', totalRows: 0, errors: [] };
+    }
+    
+    const errors = [];
+    let validRows = 0;
+    
+    Logger.log('=== VALIDASI SHEET ADMINS ===');
+    Logger.log('Total baris (termasuk header): ' + data.length);
+    
+    // Loop dari baris 2 (skip header di baris 1)
+    for (let i = 1; i < data.length; i++) {
+      const rowNum = i + 1; // Nomor baris di sheet (1-indexed)
+      const npsn = (data[i][0] || '').toString().trim();
+      const nama = (data[i][1] || '').toString().trim();
+      const password = (data[i][2] || '').toString().trim();
+      const timestamp = data[i][3] || '';
+      
+      const rowErrors = [];
+      
+      // Validasi Kolom A: NPSN
+      if (!npsn) {
+        rowErrors.push(`Kolom A (NPSN) kosong`);
+      } else if (!/^\d{8}$/.test(npsn)) {
+        rowErrors.push(`Kolom A (NPSN) = "${npsn}" ❌ Harus 8 digit angka`);
+      }
+      
+      // Validasi Kolom C: Password (BEBAS - tidak boleh kosong saja)
+      if (!password) {
+        rowErrors.push(`Kolom C (Password) kosong`);
+      }
+      
+      if (rowErrors.length > 0) {
+        errors.push({
+          baris: rowNum,
+          npsn: npsn,
+          nama: nama,
+          errors: rowErrors
+        });
+        Logger.log(`❌ Baris ${rowNum}: ${rowErrors.join(' | ')}`);
+      } else {
+        validRows++;
+        Logger.log(`✅ Baris ${rowNum}: NPSN=${npsn}, Nama=${nama}, Password="${password}" OK`);
+      }
+    }
+    
+    Logger.log('=== RINGKASAN VALIDASI ===');
+    Logger.log(`Total data rows: ${data.length - 1}`);
+    Logger.log(`Valid rows: ${validRows}`);
+    Logger.log(`Error rows: ${errors.length}`);
+    
+    if (errors.length > 0) {
+      Logger.log('\n=== DETAIL ERROR ===');
+      errors.forEach(err => {
+        Logger.log(`Baris ${err.baris} (NPSN: ${err.npsn}, Nama: ${err.nama}):`);
+        err.errors.forEach(e => Logger.log(`  - ${e}`));
+      });
+    } else {
+      Logger.log('✅ SEMUA DATA VALID!');
+    }
+    
+    return {
+      success: true,
+      totalRows: data.length - 1,
+      validRows: validRows,
+      errorRows: errors.length,
+      errors: errors
+    };
+    
+  } catch (error) {
+    Logger.log('Error validating ADMINS sheet: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * AUTO-FIX: Perbaiki data di ADMINS sheet
+ * - Hapus baris dengan NPSN kosong atau invalid
+ * - Hapus baris dengan password kosong
+ * 
+ * RUN DENGAN HATI-HATI!
+ */
+function fixAdminsSheet() {
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('ADMINS');
+    
+    if (!sheet) {
+      Logger.log('❌ Sheet ADMINS tidak ditemukan');
+      return { success: false, error: 'Sheet ADMINS tidak ditemukan' };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const rowsToDelete = [];
+    
+    Logger.log('=== PERBAIKAN DATA ADMINS ===');
+    
+    // Loop mundur (agar hapus baris dari bawah ke atas, index tidak berubah)
+    for (let i = data.length - 1; i >= 1; i--) {
+      const rowNum = i + 1;
+      const npsn = (data[i][0] || '').toString().trim();
+      const password = (data[i][2] || '').toString().trim();
+      
+      // Jika NPSN invalid/kosong → hapus baris
+      if (!npsn || !/^\d{8}$/.test(npsn)) {
+        rowsToDelete.push(rowNum);
+        Logger.log(`🗑️  Hapus Baris ${rowNum}: NPSN invalid "${npsn}"`);
+        continue;
+      }
+      
+      // Jika password kosong → hapus baris
+      if (!password) {
+        rowsToDelete.push(rowNum);
+        Logger.log(`🗑️  Hapus Baris ${rowNum}: Password kosong`);
+        continue;
+      }
+    }
+    
+    // Hapus baris yang invalid
+    rowsToDelete.forEach(rowNum => {
+      sheet.deleteRow(rowNum);
+    });
+    
+    Logger.log(`=== SELESAI ===`);
+    Logger.log(`Baris dihapus: ${rowsToDelete.length}`);
+    
+    return {
+      success: true,
+      deletedRows: rowsToDelete.length
+    };
+    
+  } catch (error) {
+    Logger.log('Error fixing ADMINS sheet: ' + error);
+    return { success: false, error: error.toString() };
+  }
 }
