@@ -1,33 +1,58 @@
 <style>
 /* Spinner loading kecil untuk tombol */
-.btn-spinner {
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    vertical-align: middle;
-    border: 2px solid #ccc;
-    border-top: 2px solid #6366f1;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-right: 6px;
-}
-</style>
-<script>
-// Loading handler untuk tombol Simpan/Edit di formUjianGuru dan semua tombol aksi .btn-edit
-document.addEventListener('DOMContentLoaded', function() {
-    // Form Simpan
-    var formGuru = document.getElementById('formUjianGuru');
-    if (formGuru) {
-        formGuru.addEventListener('submit', function(e) {
-            var btn = formGuru.querySelector('.btn-primary[type="submit"]');
-            if (btn) {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="btn-spinner"></span>Menyimpan...';
-            }
-            setTimeout(function() {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = 'Simpan';
+    #examZoomControls {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        background: rgba(255,255,255,0.92);
+        border-radius: 999px;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+        z-index: 2147483000;
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+        font-size: 13px;
+        color: #0f172a;
+        transition: box-shadow 160ms ease, transform 120ms ease;
+    }
+    #examZoomControls:active { cursor: grabbing; transform: translateX(-50%) scale(0.99); }
+    #examZoomControls.slim { padding:4px 8px; gap:6px; font-size:12px; }
+    #examZoomControls .exam-zoom-btn {
+        padding: 6px 12px;
+        min-width: 36px;
+        height: 36px;
+        border-radius: 999px; /* pill */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        background: rgba(15,23,42,0.06);
+        border: none;
+        box-shadow: none;
+    }
+    #examZoomControls .exam-zoom-value {
+        padding: 6px 10px;
+        min-width: 48px;
+        text-align: center;
+        font-weight: 800;
+        color: #0f172a;
+        font-size: 12px;
+        border-radius: 999px;
+        background: transparent;
+    }
+    @media (max-width:480px){
+        #examZoomControls { left:50%; right:auto; bottom: 70px; transform: translateX(-50%); padding:6px; }
+        #examZoomControls .exam-zoom-btn { padding:6px 10px; min-width:32px; height:32px; }
+        #examZoomControls .exam-zoom-value { min-width:40px; padding:4px 8px; }
+    }
+    /* Small transient zoom indicator removed */
                 }
             }, 1800);
         });
@@ -65,6 +90,8 @@ document.addEventListener('DOMContentLoaded', function() {
     align-items: center;
     gap: 16px;
     margin-top: 10px;
+    grid-column: 1/3;
+    width: 100%;
 }
 #formUjianGuru .form-actions .btn {
     min-width: 110px;
@@ -89,7 +116,58 @@ document.addEventListener('DOMContentLoaded', function() {
         height: 38px;
     }
 }
+/* Desktop: center action buttons within the two-column grid */
+@media (min-width: 768px) {
+    #formUjianGuru .form-actions {
+        justify-content: center !important;
+    }
+}
+@media (max-width: 600px) {
+    /* Override: paksa tombol di formUjianGuru tetap berdampingan (kanan-kiri) */
+    #formUjianGuru .form-actions {
+        flex-direction: row !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 8px !important;
+        flex-wrap: nowrap !important;
+    }
+    #formUjianGuru .form-actions .btn {
+        flex: 0 1 42% !important; /* slightly narrower on phones */
+        max-width: 42% !important;
+        min-width: 120px !important;
+    }
+}
 </style>
+<style>
+/* Textarea styling untuk form ujian guru */
+.form-textarea {
+    padding: 12px 16px;
+    font-size: 15px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    background: #fff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.5;
+}
+.form-textarea:focus {
+    outline: none;
+    border-color: #0ea5ff;
+    box-shadow: 0 0 0 3px rgba(14, 165, 255, 0.1);
+}
+/* Responsive form ujian guru - Mobile: 1 kolom */
+@media (max-width: 768px) {
+    #formUjianGuruContainer {
+        grid-template-columns: 1fr !important;
+        gap: 18px !important;
+    }
+    #formUjianGuruContainer > div {
+        width: 100%;
+    }
+}
 </style>
 <style>
 /* Center horizontal konten utama di desktop */
@@ -104,9 +182,408 @@ document.addEventListener('DOMContentLoaded', function() {
         position: relative;
     }
 }
+
+/* Popup guru (NPSN & Pilih Mode): center horizontal & vertikal, lebar sama */
+#modalInput[style*="display: flex"],
+#modalModeSelection[style*="display: flex"] {
+    flex-direction: column;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#modalInput .modal-content-center,
+#modalModeSelection .modal-content-center {
+    margin: 0 auto !important;
+    left: auto !important;
+    transform: none !important;
+}
+
+/* CSS untuk Modal Notifikasi dan Input Custom */
+.modal-content-center {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    width: min(90%, 360px);
+    max-width: 360px;
+    box-sizing: border-box;
+    margin: 0 auto;
+}
+
+#modalInput .modal-content-center,
+#modalModeSelection .modal-content-center {
+    width: min(92%, 360px) !important;
+    max-width: 360px !important;
+}
+
+#modalNotifikasi[style*="display: flex"],
+#modalInput[style*="display: flex"],
+#modalModeSelection[style*="display: flex"] {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    animation: fadeInModal 0.2s ease-out;
+}
+
+#modalNotifikasi[style*="display: flex"],
+#modalInput[style*="display: flex"],
+#modalModeSelection[style*="display: flex"] {
+    display: flex !important;
+}
+
+#modalNotifikasi,
+#modalInput,
+#modalModeSelection {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+#modalNotifikasi .modal-content-center,
+#modalInput .modal-content-center,
+#modalModeSelection .modal-content-center {
+    animation: slideUpModal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+@keyframes fadeInModal {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUpModal {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+#modalNotifikasiBtn:hover,
+#modalInputOkBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(14, 165, 255, 0.3) !important;
+}
+
+#modalNotifikasiBtn:active,
+#modalInputOkBtn:active {
+    transform: translateY(0);
+}
+
+#modalInputField:focus {
+    outline: none;
+    border-color: #0ea5ff !important;
+    box-shadow: 0 0 0 3px rgba(14, 165, 255, 0.1) !important;
+}
+
+/* Modal button hover effects */
+#modalInput button:hover {
+    filter: brightness(0.96);
+}
+
+#modalInput button:active {
+    transform: scale(0.98);
+}
+
+@media (max-width: 480px) {
+    #modalNotifikasi .modal-content-center,
+    #modalInput .modal-content-center {
+        width: 90%;
+        max-width: 100%;
+    }
+}
+
+/* Responsive untuk semua breakpoints */
+@media (max-width: 350px) {
+    #modalNotifikasi .modal-content-center,
+    #modalInput .modal-content-center {
+        width: 88% !important;
+        margin: 16px auto !important;
+        padding: 16px !important;
+    }
+    
+    #modalNotifikasiTitle {
+        font-size: 16px !important;
+    }
+    
+    #modalNotifikasiMsg,
+    #modalInputField {
+        font-size: 14px !important;
+    }
+    
+    .modal-btn-row button {
+        font-size: 13px !important;
+        padding: 10px 16px !important;
+        min-height: 36px !important;
+    }
+}
+
+@media (min-width: 351px) and (max-width: 374px) {
+    #modalNotifikasi .modal-content-center,
+    #modalInput .modal-content-center {
+        width: 90% !important;
+        margin: 20px auto !important;
+    }
+    
+    #modalNotifikasiTitle {
+        font-size: 17px !important;
+    }
+    
+    #modalNotifikasiMsg,
+    #modalInputField {
+        font-size: 14px !important;
+    }
+}
+
+@media (min-width: 375px) and (max-width: 480px) {
+    #modalNotifikasi .modal-content-center,
+    #modalInput .modal-content-center {
+        width: 90% !important;
+        max-width: 320px !important;
+    }
+    
+    .modal-btn-row {
+        flex-wrap: wrap !important;
+    }
+    
+    .modal-btn-row button {
+        flex: 1 1 auto !important;
+        min-width: 120px !important;
+    }
+}
+
+@media (min-width: 481px) and (max-width: 600px) {
+    #modalNotifikasi .modal-content-center,
+    #modalInput .modal-content-center {
+        width: 85% !important;
+        max-width: 360px !important;
+    }
+}
+
+@media (min-width: 601px) and (max-width: 768px) {
+    #modalNotifikasi .modal-content-center,
+    #modalInput .modal-content-center {
+        width: 80% !important;
+        max-width: 500px !important;
+    }
+}
+
+@media (min-width: 769px) {
+    #modalNotifikasi .modal-content-center,
+    #modalInput .modal-content-center {
+        width: 75% !important;
+        max-width: 600px !important;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    #modalNotifikasiBtn,
+    #modalInputOkBtn,
+    #modalInputCancelBtn {
+        padding: 12px 24px !important;
+        min-height: 44px !important;
+        font-size: 15px !important;
+    }
+    
+    .modal-btn-row button {
+        min-height: 44px !important;
+    }
+    
+    #modalInputField {
+        padding: 10px 12px !important;
+        font-size: 16px !important;
+        min-height: 44px !important;
+    }
+}
+
+/* Landscape mode adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+    #modalNotifikasi .modal-content-center,
+    #modalInput .modal-content-center {
+        padding: 12px 20px !important;
+        margin: 10px auto !important;
+    }
+    
+    #modalNotifikasiMsg {
+        max-height: 150px !important;
+        overflow-y: auto !important;
+    }
+}
 </style>
 
-<!-- Modal Akses Daftar Ujian (rapi, hanya HTML, script di bawah) -->
+<!-- Modal Notifikasi/Alert Custom -->
+<div id="modalNotifikasi" class="modal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+    <div class="modal-content-center">
+        <div style="display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+            <span id="modalNotifikasiIcon" style="font-size:48px; width:56px; height:56px; display:flex; align-items:center; justify-content:center; background:rgba(16,185,129,0.1); border-radius:50%; line-height:1;"></span>
+        </div>
+        <h3 id="modalNotifikasiTitle" style="margin:0 0 8px 0; text-align:center; font-size:18px; color:#0f172a;"></h3>
+        <p id="modalNotifikasiMsg" style="margin:0 0 20px 0; text-align:center; font-size:14px; color:#64748b; line-height:1.6; word-wrap:break-word; overflow-wrap:break-word;"></p>
+        <button id="modalNotifikasiBtn" onclick="tutupModalNotifikasi()" style="width:100%; padding:12px; background:linear-gradient(180deg,#0ea5ff,#0284c7); color:white; border:none; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; transition:all 0.3s ease;">OK</button>
+    </div>
+</div>
+
+<!-- Modal Input/Prompt Custom -->
+<div id="modalInput" class="modal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+    <div class="modal-content-center">
+        <h3 id="modalInputTitle" style="margin:0 0 16px 0; text-align:center; font-size:18px; color:#0f172a;"></h3>
+        <input type="text" id="modalInputField" style="width:100%; padding:12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:15px; box-sizing:border-box; margin-bottom:16px; font-family:'Outfit',Arial,sans-serif;" placeholder="">
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button onclick="tutupModalInput()" style="padding:10px 24px; background:#f1f5f9; color:#0f172a; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; transition:all 0.3s ease;">Batal</button>
+            <button id="modalInputOkBtn" onclick="konfirmasiModalInput()" style="padding:10px 24px; background:linear-gradient(180deg,#0ea5ff,#0284c7); color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; transition:all 0.3s ease;">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Pilih Mode Guru -->
+<div id="modalModeSelection" class="modal" style="display:none; position:fixed; z-index:10001; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+    <div class="modal-content-center">
+        <h3 id="modalModeSelectionTitle" style="margin:0 0 12px 0; text-align:center; font-size:18px; color:#0f172a;">Pilih Mode</h3>
+        <p id="modalModeSelectionMsg" style="margin:0 0 18px 0; text-align:center; font-size:14px; color:#64748b; line-height:1.6;">Pilih akses yang Anda inginkan untuk akun guru.</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%;">
+            <button type="button" id="modalModeSelectionLoginBtn" onclick="pilihModeGuru('login')" style="padding:12px 20px; background:linear-gradient(180deg,#0ea5ff,#0284c7); color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; transition:all 0.3s ease; width:100%;">Login</button>
+            <button type="button" id="modalModeSelectionRegisterBtn" onclick="pilihModeGuru('register')" style="padding:12px 20px; background:#f8fafc; color:#0f172a; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; transition:all 0.3s ease; width:100%;">Registrasi</button>
+        </div>
+        <div style="margin-top:10px; width:100%;">
+            <button type="button" onclick="tutupModalModeSelection()" style="padding:12px 20px; background:#f1f5f9; color:#0f172a; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; transition:all 0.3s ease; width:100%;">Batal</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ========== MODAL NOTIFIKASI CUSTOM (Mengganti alert) ==========
+var modalNotifikasiCallback = null;
+var modalNotifikasiAutoCloseTimer = null;
+
+function showNotifikasi(msg, title, tipe, autoCloseMs) {
+    tipe = tipe || 'success'; // success, error, warning, info
+    title = title || (tipe === 'success' ? '✅ Sukses' : tipe === 'error' ? '❌ Error' : tipe === 'warning' ? '⚠️ Perhatian' : 'ℹ️ Informasi');
+    autoCloseMs = autoCloseMs || (tipe === 'success' ? 2000 : 0); // Auto-close untuk success setelah 2 detik
+    
+    var iconMap = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+    };
+    var colorMap = {
+        success: 'rgba(16,185,129,0.1)',
+        error: 'rgba(239,68,68,0.1)',
+        warning: 'rgba(245,158,11,0.1)',
+        info: 'rgba(59,130,246,0.1)'
+    };
+    
+    // Clear previous auto-close timer
+    if (modalNotifikasiAutoCloseTimer) clearTimeout(modalNotifikasiAutoCloseTimer);
+    
+    document.getElementById('modalNotifikasiIcon').textContent = iconMap[tipe] || iconMap['info'];
+    document.getElementById('modalNotifikasiIcon').style.background = colorMap[tipe] || colorMap['info'];
+    document.getElementById('modalNotifikasiTitle').textContent = title;
+    document.getElementById('modalNotifikasiMsg').textContent = msg;
+    document.getElementById('modalNotifikasi').style.display = 'flex';
+    
+    // Auto-focus button
+    setTimeout(function() { document.getElementById('modalNotifikasiBtn').focus(); }, 100);
+    
+    // Auto-close untuk success notifications
+    if (autoCloseMs > 0) {
+        modalNotifikasiAutoCloseTimer = setTimeout(function() {
+            tutupModalNotifikasi();
+        }, autoCloseMs);
+    }
+}
+
+function tutupModalNotifikasi() {
+    document.getElementById('modalNotifikasi').style.display = 'none';
+    if (modalNotifikasiCallback) {
+        var cb = modalNotifikasiCallback;
+        modalNotifikasiCallback = null;
+        cb();
+    }
+}
+
+// Tutup modal saat tekan Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        if (document.getElementById('modalNotifikasi').style.display === 'flex') {
+            tutupModalNotifikasi();
+        } else if (document.getElementById('modalInput').style.display === 'flex') {
+            tutupModalInput();
+        } else if (document.getElementById('modalModeSelection').style.display === 'flex') {
+            tutupModalModeSelection();
+        }
+    }
+});
+
+// ========== MODAL INPUT CUSTOM (Mengganti prompt) ==========
+var modalInputCallback = null;
+
+// ========== MODAL PILIH MODE GURU ==========
+var modalModeSelectionCallback = null;
+
+function showModeSelectionModal(npsn) {
+    document.getElementById('modalModeSelection').style.display = 'flex';
+    setTimeout(function() {
+        var loginBtn = document.getElementById('modalModeSelectionLoginBtn');
+        if (loginBtn) loginBtn.focus();
+    }, 100);
+}
+
+function tutupModalModeSelection() {
+    document.getElementById('modalModeSelection').style.display = 'none';
+    if (modalModeSelectionCallback) {
+        var cb = modalModeSelectionCallback;
+        modalModeSelectionCallback = null;
+        cb('cancel');
+    }
+}
+
+function pilihModeGuru(mode) {
+    document.getElementById('modalModeSelection').style.display = 'none';
+    if (modalModeSelectionCallback) {
+        var cb = modalModeSelectionCallback;
+        modalModeSelectionCallback = null;
+        cb(mode);
+    }
+}
+
+
+function showInput(msg, defaultValue, title) {
+    title = title || 'Masukkan Data';
+    defaultValue = defaultValue || '';
+    
+    document.getElementById('modalInputTitle').textContent = title;
+    var field = document.getElementById('modalInputField');
+    field.value = defaultValue;
+    field.placeholder = msg || '';
+    document.getElementById('modalInput').style.display = 'flex';
+    
+    // Auto-focus input
+    setTimeout(function() { field.focus(); field.select(); }, 100);
+}
+
+function tutupModalInput() {
+    document.getElementById('modalInput').style.display = 'none';
+    modalInputCallback = null;
+}
+
+function konfirmasiModalInput() {
+    var value = document.getElementById('modalInputField').value;
+    document.getElementById('modalInput').style.display = 'none';
+    
+    if (modalInputCallback) {
+        var cb = modalInputCallback;
+        modalInputCallback = null;
+        cb(value);
+    }
+}
+
+// Enter key untuk submit di modal input
+document.getElementById('modalInputField').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') konfirmasiModalInput();
+});
+</script>
 <div id="modalAksesUjian" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.4);">
     <div class="modal-content-center">
     <h3 style="margin-top:0;">Akses Daftar Ujian</h3>
@@ -115,7 +592,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <input type="text" id="npsnUjian" name="npsnUjian" maxlength="8" required autocomplete="off" autocapitalize="off" inputmode="numeric" style="width:100%;min-width:120px;max-width:100%;margin-bottom:10px;padding:10px 12px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:8px;">
         <label for="pinUjian">PIN ujian</label>
         <input type="password" id="pinUjian" name="pinUjian" maxlength="8" required placeholder="PIN ujian" autocomplete="new-password" inputmode="numeric" style="width:100%;min-width:120px;max-width:100%;margin-bottom:10px;padding:10px 12px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:8px;">
-      <div id="modalNpsnPinValidationMsg" style="margin-bottom:10px; color:#ef4444; font-weight:600; font-size:13px; display:none;"></div>
+      <div id="modalNpsnPinValidationMsg" style="margin-bottom:10px; color:#ef4444; font-weight:600; font-size:12px; display:none; word-wrap:break-word; overflow-wrap:break-word; line-height:1.5;"></div>
             <div class="modal-btn-row">
                 <button type="button" onclick="tutupModalUjian()">Batal</button>
                 <button type="button" onclick="validateNpsnPinModal()" style="margin-left:12px;">Validasi</button>
@@ -165,17 +642,6 @@ table, thead, tbody, tr, th, td {
 .modal-btn-row {
     display: flex;
     flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    gap: 16px;
-    margin-top: 12px;
-    flex-wrap: wrap;
-    overflow: initial;
-}
-/* Tombol Validasi dan Batal selalu rata kanan */
-.modal-btn-row {
-    display: flex;
-    flex-direction: row;
     justify-content: flex-end;
     align-items: center;
     gap: 16px;
@@ -206,14 +672,73 @@ table, thead, tbody, tr, th, td {
     font-size: 15px;
     cursor: pointer;
     transition: background 0.2s;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+@media (max-width: 380px) {
+    .modal-btn-row {
+        gap: 6px;
+        margin-top: 8px;
+    }
+    .modal-btn-row button {
+        min-width: 80px;
+        padding: 9px 14px;
+        font-size: 12px;
+        height: 36px;
+    }
+}
+@media (max-width: 480px) {
+    .modal-btn-row {
+        gap: 8px;
+    }
+    .modal-btn-row button {
+        min-width: 90px;
+        padding: 10px 18px;
+        font-size: 14px;
+        height: 38px;
+    }
 }
 .modal-btn-row button:last-child {
-    background: var(--primary, #0052CC);
+    background: linear-gradient(180deg, #0ea5ff, #0284c7);
     color: #fff;
-    border-color: var(--primary, #0052CC);
+    border-color: #0ea5ff;
+    box-shadow: 0 8px 20px rgba(14,165,255,0.18);
+    font-weight: 700;
+}
+/* Specific: make Save buttons in admin modal (Tempel Link Ujian) high-contrast blue */
+#modalAdminNpsn #formUjianGuru .btn.btn-primary,
+#modalAdminNpsn .form-actions .btn.btn-primary,
+#formUjianGuru .btn.btn-primary {
+    background: linear-gradient(180deg,#0ea5ff,#0284c7);
+    color: #fff;
+    border: none;
+    border-color: transparent;
+    box-shadow: 0 8px 20px rgba(14,165,255,0.18);
+    font-weight: 700;
 }
 .modal-btn-row button:hover {
     filter: brightness(0.97);
+}
+
+/* Modal NPSN Akses Ujian - Auto Center */
+#modalAksesUjian {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    background-color: rgba(0,0,0,0.4);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#modalAksesUjian[style*="flex"] {
+    display: flex !important;
 }
 
 /* Modal akses ujian center horizontal di desktop */
@@ -226,7 +751,71 @@ table, thead, tbody, tr, th, td {
     max-width: 400px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.2);
     position: relative;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    box-sizing: border-box;
 }
+
+.modal-content-center h3 {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    font-size: 18px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.modal-content-center label {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.modal-content-center input {
+    width: 100%;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+@media (max-width: 380px) {
+    .modal-content-center {
+        width: 95%;
+        max-width: 100%;
+        padding: 14px;
+        margin: 15% auto;
+    }
+    
+    .modal-content-center h3 {
+        font-size: 14px;
+        line-height: 1.5;
+        margin-bottom: 10px;
+    }
+    
+    .modal-content-center label {
+        font-size: 12px;
+        margin-bottom: 5px;
+    }
+    
+    .modal-content-center input {
+        font-size: 14px;
+        padding: 10px 10px;
+    }
+    
+    .modal-btn-row {
+        gap: 6px;
+    }
+    
+    .modal-btn-row button {
+        padding: 9px 12px;
+        font-size: 12px;
+        min-width: 75px;
+        height: 36px;
+    }
+}
+
 @media (min-width: 768px) {
     .modal-content-center {
         left: 50%;
@@ -258,7 +847,7 @@ function validateNpsnPinModal() {
     
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner" style="display:inline-block;width:18px;height:18px;vertical-align:middle;border:2px solid #ccc;border-top:2px solid #6366f1;border-radius:50%;animation:spin 0.8s linear infinite;margin-right:6px;"></span>Loading...';
+        btn.innerHTML = '<span class="spinner" style="display:inline-block;width:18px;height:18px;vertical-align:middle;border:2px solid #ccc;border-top:2px solid var(--primary-dark,#0369a1);border-radius:50%;animation:spin 0.8s linear infinite;margin-right:6px;"></span>Loading...';
     }
     
     // Helper untuk normalisasi (hapus non-digit jika perlu, atau cukup trim)
@@ -266,11 +855,6 @@ function validateNpsnPinModal() {
     const normalizeNumeric = (val) => (val || '').toString().replace(/\D/g, '');
 
     getExamLinks().then(function(links) {
-        console.log('--- DEBUG VALIDATION (MODAL) ---');
-        console.log('Input NPSN:', npsn);
-        console.log('Input PIN:', pin);
-        console.log('Total Links:', links.length);
-
         const filtered = links.filter(exam => {
             const examNpsn = normalize(exam.npsn);
             const examPin = normalize(exam.pin);
@@ -284,11 +868,7 @@ function validateNpsnPinModal() {
                                   normalizeNumeric(examPin) === normalizeNumeric(pin) &&
                                   (npsn.length > 0 && pin.length > 0);
 
-            if (isActive && (isMatch || isNumericMatch)) {
-                console.log('✅ Match found:', exam.subject, '| NPSN:', examNpsn, '| PIN:', examPin);
-                return true;
-            }
-            return false;
+            return isActive && (isMatch || isNumericMatch);
         });
 
         if (filtered.length > 0) {
@@ -301,14 +881,9 @@ function validateNpsnPinModal() {
             daftarUjianContainer.innerHTML = html;
             daftarUjianContainer.style.display = 'block';
         } else {
-            // Debugging info for user/admin
             const activeLinks = links.filter(exam => (exam.status === 'Aktif' || !exam.status));
-            const availablePairs = activeLinks.map(e => `${normalize(e.npsn)}/${normalize(e.pin)}`).slice(0, 5);
-            
-            console.log('❌ No match. Active pairs (sample):', availablePairs);
-            
             msg.textContent = 'NPSN/PIN tidak ditemukan atau status ujian nonaktif. ' + 
-                             (availablePairs.length > 0 ? '\nPastikan format input benar.' : '\nTidak ada data ujian aktif.');
+                             (activeLinks.length > 0 ? '\nPastikan format input benar.' : '\nTidak ada data ujian aktif.');
             msg.style.color = '#ffffff';
             msg.style.display = 'block';
             daftarUjianContainer.innerHTML = '';
@@ -329,7 +904,7 @@ function validateNpsnPinModal() {
 
 // Fungsi untuk membuka modal akses ujian
 function bukaModalUjian() {
-    document.getElementById('modalAksesUjian').style.display = 'block';
+    document.getElementById('modalAksesUjian').style.display = 'flex';
     document.getElementById('daftarUjianContainer').style.display = 'none';
     document.getElementById('formAksesUjian').reset();
 }
@@ -342,6 +917,7 @@ window.addEventListener('click', function(event) {
     var modalUjian = document.getElementById('modalAksesUjian');
     var modalKonfirmasi = document.getElementById('modalKonfirmasi');
     var modalAdmin = document.getElementById('modalAdminNpsn');
+    var modalModeSelection = document.getElementById('modalModeSelection');
     // Jangan tutup jika klik tombol Admin
     if (event.target === document.getElementById('adminDropdownBtn')) return;
     if (event.target == modalUjian) {
@@ -352,6 +928,9 @@ window.addEventListener('click', function(event) {
     }
     if (modalAdmin && event.target == modalAdmin) {
         tutupAdminNpsnModal();
+    }
+    if (modalModeSelection && event.target == modalModeSelection) {
+        tutupModalModeSelection();
     }
 });
 // Tangani submit form akses ujian
@@ -418,7 +997,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0052CC">
+    <meta name="theme-color" content="#0077BE">
     <meta name="format-detection" content="telephone=no">
     <title>EXAMUNA - Platform Ujian Aman</title>
     
@@ -453,22 +1032,23 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
         }
 
         :root {
-            --primary: #0052CC;
-            --primary-dark: #003D99;
-            --secondary: #0066FF;
+            /* Tema: biru muda tipis */
+            --primary: #0ea5e9; /* sky-500 */
+            --primary-dark: #0369a1; /* sky-800 */
+            --secondary: #bfdbfe; /* sky-200 */
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
-            --bg-light: #f8fafc;
-            --bg-medium: #f1f5f9;
-            --bg-dark: #e2e8f0;
-            --text-primary: #000000;
-            --text-secondary: #000000;
-            --border: #cbd5e1;
+            --bg-light: #f1fbff;
+            --bg-medium: #e6f6ff;
+            --bg-dark: #dff3fe;
+            --text-primary: #07223a;
+            --text-secondary: #274155;
+            --border: #cfeafc;
         }
 
         body {
-            font-family: 'Outfit', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
             color: var(--text-primary);
             min-height: 100vh;
@@ -501,9 +1081,43 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             word-wrap: break-word;
             word-break: break-word;
             overflow-wrap: break-word;
-        }
+            }
 
-        /* Center main content horizontally for desktop */
+            /* Touch-friendly defaults */
+            button, .btn, .btn-exam-list, a.button {
+                -webkit-tap-highlight-color: rgba(0,0,0,0);
+                touch-action: manipulation;
+                min-height: 44px;
+                padding: 10px 16px;
+                border-radius: 10px;
+                box-sizing: border-box;
+            }
+
+            input, textarea, select {
+                font-size: 15px;
+                padding: 12px 14px;
+                border-radius: 10px;
+                min-height: 44px;
+            }
+
+            :focus {
+                outline: 3px solid rgba(14,165,233,0.16);
+                outline-offset: 2px;
+            }
+
+            @media (max-width: 480px) {
+                button, .btn, .btn-exam-list {
+                    min-height: 52px;
+                    font-size: 16px;
+                    padding: 12px 18px;
+                }
+                input, textarea, select {
+                    font-size: 16px;
+                    padding: 12px 16px;
+                }
+            }
+
+            /* Center main content horizontally for desktop */
         @media (min-width: 768px) {
             html, body {
                 min-height: 100vh;
@@ -556,6 +1170,69 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             pointer-events: none;
             z-index: 0;
             will-change: auto;
+        }
+
+        /* Responsive utilities: fluid containers, typography, and iframe */
+        :root {
+            --container-padding: clamp(12px, 3vw, 24px);
+            --max-content-width: 1100px;
+            --fluid-base-font: clamp(14px, 1.6vw, 18px);
+            --lock-card-max: 720px;
+        }
+
+        /* Ensure main containers are fluid and centered */
+        .lock-card,
+        .tab-content,
+        .exam-links-list,
+        .exam-screen,
+        .modal-content-center {
+            width: min(100%, var(--max-content-width));
+            padding: var(--container-padding);
+            margin-left: auto;
+            margin-right: auto;
+            box-sizing: border-box;
+        }
+
+        /* Fluid typography baseline */
+        html { font-size: var(--fluid-base-font); }
+
+        /* Small screens: make inputs/buttons full-width and reduce paddings */
+        @media (max-width: 700px) {
+            .modal-btn-row button,
+            .lock-card .btn,
+            .lock-card .login-input,
+            .form-input,
+            .form-select.login-input,
+            input, textarea, select {
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+            .modal-btn-row { justify-content: center; }
+            .lock-card { padding: clamp(12px, 4vw, 20px); max-width: 100%; }
+        }
+
+        /* Modal sizing */
+        .modal-content-center { max-width: 420px; width: min(95%, 420px); padding: var(--container-padding); }
+
+        /* Make exam iframe responsive (fills exam area) */
+        .exam-content { width: 100%; height: calc(100vh - 120px); box-sizing: border-box; overflow: hidden; }
+        .exam-iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+        /* Larger screens tweaks */
+        @media (min-width: 1200px) {
+            :root { --max-content-width: 1100px; --fluid-base-font: 18px; }
+            .lock-card { max-width: var(--lock-card-max); }
+        }
+
+        /* Safety: hide any leftover zoom control rules */
+        #examZoomControls,
+        .exam-zoom-controls,
+        .exam-zoom-btn,
+        .exam-zoom-value,
+        #zoomIndicator {
+            display: none !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
         }
 
         /* Lock Screen - Linktree Style */
@@ -650,8 +1327,18 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             flex-direction: column;
             justify-content: center;
             gap: clamp(0px, 0.4vw, 3px);
-            margin-top: clamp(20px, 4vh, 45px);
-            margin-bottom: clamp(8px, 2vh, 14px);
+            align-items: center;
+            background: #0077BE;
+            width: calc(100% + 2 * clamp(16px, 5vw, 32px));
+            margin-left: clamp(-16px, -5vw, -32px);
+            margin-right: clamp(-16px, -5vw, -32px);
+            padding: clamp(20px, 4vh, 36px) clamp(16px, 5vw, 32px) clamp(16px, 3vh, 24px);
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            box-shadow: 0 6px 20px rgba(0, 119, 190, 0.25);
+            box-sizing: border-box;
+            margin-top: 0;
+            margin-bottom: clamp(12px, 3vh, 20px);
             cursor: pointer;
         }
 
@@ -685,7 +1372,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             height: 3px;
             background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
             border-radius: 2px;
-            margin-top: clamp(8px, 2vh, 12px);
+            margin-top: 0;
             margin-bottom: 0;
         }
 
@@ -694,7 +1381,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             font-size: clamp(28px, 8vw, 34px);
             font-weight: 700;
             margin: 0 auto 0 auto;
-            color: #FFFFFF;
+            color: #1f2937;
             width: 100%;
             max-width: 100%;
             display: block;
@@ -703,21 +1390,26 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             box-sizing: border-box;
             padding: 0 8px;
             line-height: 1.3;
-            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.3);
+            text-shadow: none;
+            background: transparent;
         }
 
         .lock-subtitle {
             text-align: center;
-            color: #FFFFFF;
+            color: #1f2937;
             margin: 0 clamp(-28px, -4vw, -16px) clamp(14px, 3vw, 20px) clamp(-28px, -4vw, -16px);
             font-size: clamp(14px, 4.5vw, 18px);
-            line-height: 1.5;
+            line-height: 1.6;
             opacity: 1;
             width: calc(100% + clamp(56px, 8vw, 44px));
             max-width: none;
             padding: 0 clamp(16px, 4vw, 24px) clamp(12px, 2.5vw, 16px) clamp(16px, 4vw, 24px);
             border-bottom: 2px solid rgba(255, 255, 255, 0.3);
             box-sizing: border-box;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            background: transparent;
         }
         
         .btn-exam-list {
@@ -728,7 +1420,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             color: white;
             border: none;
             border-radius: clamp(10px, 3vw, 16px);
-            font-family: 'Outfit', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             font-size: clamp(16px, 5vw, 20px);
             font-weight: 600;
             cursor: pointer;
@@ -778,10 +1470,10 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
         /* Linktree-style Exam Cards */
         .exam-list-label {
             text-align: center;
-            color: #FFFFFF;
+            color: #1f2937;
             font-size: clamp(15px, 4vw, 17px);
             font-weight: 600;
-            margin: 0 auto clamp(8px, 2vh, 12px) auto;
+            margin: clamp(-16px, -2.5vh, -10px) auto clamp(8px, 2vh, 12px) auto;
             width: 100%;
             padding: clamp(12px, 2vh, 16px) clamp(16px, 4vw, 24px);
         }
@@ -874,7 +1566,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             font-size: clamp(14px, 3vw, 15px);
             color: #555;
             opacity: 0.8;
-            font-family: 'Outfit', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             word-break: break-word;
             text-align: left;
             width: 100%;
@@ -892,17 +1584,11 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             line-height: 1.3;
         }
 
-        .exam-actions {
-            display: flex;
-            gap: 8px;
-            margin-left: auto;
-        }
-
         .btn-action {
             padding: 8px 12px;
             border: none;
             border-radius: 8px;
-            font-family: 'Outfit', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
@@ -911,7 +1597,6 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
         }
 
         .btn-edit {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
             box-shadow: 0 2px 8px rgba(0, 82, 204, 0.2);
         }
@@ -922,7 +1607,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
         }
 
         .btn-delete {
-            background: rgba(239, 68, 68, 0.1);
+            border: none;
             color: var(--danger);
             border: 1px solid rgba(239, 68, 68, 0.3);
         }
@@ -1036,9 +1721,13 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             margin: 0 auto clamp(6px, 1.5vw, 8px) auto;
             font-size: clamp(11px, 2.5vw, 13px);
             font-weight: 600;
-            color: #FFFFFF;
+            color: #1f2937;
             text-align: center;
             width: 100%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            line-height: 1.4;
         }
 
         .form-input {
@@ -1049,7 +1738,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             border: 2px solid var(--border);
             border-radius: clamp(6px, 1.5vw, 8px);
             color: var(--text-primary);
-            font-family: 'Outfit', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             font-size: clamp(12px, 2.5vw, 14px);
             transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             text-align: center;
@@ -1058,6 +1747,9 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             overflow: hidden;
             text-overflow: ellipsis;
             display: block;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            line-height: 1.5;
         }
 
         .form-input:focus {
@@ -1079,7 +1771,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             border: 2px solid var(--border);
             border-radius: 8px;
             color: var(--text-secondary);
-            font-family: 'Outfit', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             font-size: 13px;
             word-break: break-word;
             overflow-wrap: break-word;
@@ -1093,7 +1785,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             padding: clamp(12px, 2.5vw, 14px) clamp(20px, 3vw, 24px);
             border: none;
             border-radius: clamp(6px, 1.5vw, 8px);
-            font-family: 'Outfit', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             font-size: clamp(13px, 2.5vw, 15px);
             font-weight: 600;
             cursor: pointer;
@@ -1106,7 +1798,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             max-width: calc(100% - clamp(24px, 6vw, 40px));
             margin: 0 auto clamp(12px, 3vw, 18px) auto;
             box-sizing: border-box;
-        }
+        }}
 
         .btn:hover {
             transform: translateY(-2px);
@@ -1213,7 +1905,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
         .exam-url {
             font-size: 10px;
             color: var(--primary);
-            font-family: 'Outfit', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             font-weight: 500;
             user-select: none;
             -webkit-user-select: none;
@@ -1293,7 +1985,10 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             display: block;
             box-sizing: border-box;
             flex: 1;
+            transform-origin: top left;
+            transition: transform 0.2s ease;
         }
+        /* Zoom controls removed */
 
         /* Hide browser fullscreen notification and exit button */
         ::backdrop {
@@ -1512,7 +2207,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
         .exam-item-url {
             font-size: clamp(13px, 3vw, 14px);
             color: #555;
-            font-family: 'Outfit', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             margin-bottom: 0;
             word-break: break-word;
             padding: 0;
@@ -1534,7 +2229,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             color: white;
             border: none;
             border-radius: 10px;
-            font-family: 'Outfit', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             font-size: clamp(16px, 5vw, 19px);
             font-weight: 600;
             cursor: pointer;
@@ -1559,7 +2254,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             padding: 8px 12px;
             border: none;
             border-radius: 6px;
-            font-family: 'Outfit', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
@@ -1644,11 +2339,11 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
         /* Extra Small Devices (320px - 374px) */
         @media (max-width: 374px) {
             .lock-screen {
-                padding: 16px 14px;
+                padding: 12px 10px;
             }
 
             .lock-card {
-                padding: 14px 18px;
+                padding: 12px 12px;
                 max-width: 100%;
                 width: 100%;
             }
@@ -1660,29 +2355,37 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             }
 
             .logo-text {
-                font-size: clamp(20px, 5vw, 26px);
-                margin-top: 10px;
+                font-size: clamp(20px, 5vw, 24px);
+                margin-top: 8px;
             }
 
             .lock-title {
-                font-size: clamp(28px, 7vw, 36px);
-                margin-bottom: 12px;
+                font-size: clamp(24px, 6.5vw, 30px);
+                margin-bottom: 8px;
+                padding: 0 4px;
             }
 
             .lock-subtitle {
-                font-size: clamp(15px, 4vw, 18px);
-                line-height: 1.5;
-                margin-bottom: 16px;
+                font-size: 14px;
+                line-height: 1.6;
+                margin-bottom: 12px;
+                padding: 0 8px 8px 8px;
+                word-wrap: break-word;
+                word-break: break-word;
+                overflow-wrap: break-word;
             }
 
             .form-label {
-                font-size: 14px;
+                font-size: 13px;
                 margin-bottom: 6px;
+                padding: 0 4px;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
             }
 
             .form-input {
-                font-size: 17px;
-                padding: 17px 18px;
+                font-size: 16px;
+                padding: 14px 14px;
             }
             
             .btn, .btn-success, .btn-primary, .btn-warning {
@@ -1763,8 +2466,13 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             }
 
             .lock-subtitle {
-                font-size: 17px;
-                line-height: 1.6;
+                font-size: 15px;
+                line-height: 1.7;
+                padding: 0 8px 8px 8px;
+                margin: 0 -18px 12px -18px;
+                word-wrap: break-word;
+                word-break: break-word;
+                overflow-wrap: break-word;
             }
 
             .form-label {
@@ -2097,35 +2805,101 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             }
         }
 
-        @media (max-width: 480px) {
+        /* Ultra Small Devices (320px - 350px) */
+        @media (max-width: 350px) {
             .lock-screen {
-                padding: 16px 14px;
+                padding: 10px 8px;
             }
 
             .lock-card {
-                padding: 16px 12px;
+                padding: 10px 8px;
+            }
+
+            .logo-icon {
+                width: 44px;
+                height: 44px;
+                font-size: 22px;
+            }
+
+            .logo-text {
+                font-size: 20px;
+            }
+
+            .lock-title {
+                font-size: 24px;
+                line-height: 1.2;
+                margin-bottom: 4px;
+            }
+
+            .lock-subtitle {
+                font-size: 13px;
+                line-height: 1.8;
+                padding: 0 4px 6px 4px;
+                margin: 0 -8px 10px -8px;
+            }
+
+            .form-label {
+                font-size: 12px;
+            }
+
+            .form-input {
+                font-size: 15px;
+                padding: 12px 12px;
+            }
+
+            .btn, .btn-success, .btn-primary, .btn-warning, .btn-exam-list {
+                font-size: 15px;
+                padding: 12px 20px;
+            }
+
+            .modal-content-center {
+                width: 95%;
+                padding: 14px;
+            }
+
+            .modal-btn-row button {
+                min-width: 80px;
+                padding: 8px 12px;
+                font-size: 12px;
+                height: 36px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .lock-screen {
+                padding: 12px 10px;
+            }
+
+            .lock-card {
+                padding: 12px 10px;
                 max-width: 100%;
                 width: 100%;
                 margin: 0;
             }
             
             .logo-icon {
-                width: 56px;
-                height: 56px;
-                font-size: 28px;
+                width: 52px;
+                height: 52px;
+                font-size: 26px;
             }
             
             .logo-text {
-                font-size: 26px;
+                font-size: 24px;
             }
 
             .lock-title {
-                font-size: 36px;
+                font-size: 28px;
+                padding: 0 6px;
             }
 
             .lock-subtitle {
-                font-size: 18px;
-                line-height: 1.6;
+                font-size: 15px;
+                line-height: 1.7;
+                padding: 0 6px 8px 6px;
+                margin: 0 -10px 12px -10px;
+                word-wrap: break-word;
+                word-break: break-word;
+                overflow-wrap: break-word;
             }
             
             .exam-list-label {
@@ -2634,6 +3408,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             padding-left: clamp(12px, 4vw, 28px);
             padding-right: clamp(12px, 4vw, 28px);
             overflow-x: clip;
+            background: #ffffff;
         }
 
         .lock-card {
@@ -2663,6 +3438,272 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             max-width: 100%;
         }
     </style>
+        <script>
+        (function(){
+            var ENABLE_VIOLATION_LOG = (typeof ENABLE_VIOLATION_LOG !== 'undefined') ? ENABLE_VIOLATION_LOG : false;
+            var lastViolation = Object.create(null);
+            function dedupeLog(type, cooldown){
+                cooldown = cooldown || 1500;
+                var now = Date.now();
+                if (lastViolation[type] && (now - lastViolation[type] < cooldown)) return false;
+                lastViolation[type] = now;
+                return true;
+            }
+
+            function safeLogViolation(type, details, severity){
+                if (!ENABLE_VIOLATION_LOG) return;
+                try{ if (typeof logViolation === 'function') logViolation(type, details, severity || 'Medium'); else console.warn('Violation:', type, details, severity); } catch(e){}
+            }
+
+            function showViolationNotice(msg, ms, placement){
+                ms = ms || 1600;
+                if (!dedupeLog('overlay', 600)) return;
+
+                function createToastInDocument(doc, placement){
+                    placement = placement || 'bottom-center';
+                    try{
+                        var id = 'exam-protect-toast';
+                        var existing = null;
+                        try { existing = doc.getElementById(id); } catch(e) { existing = null; }
+                        if (existing) {
+                            existing.textContent = msg;
+                            existing.style.display = 'flex';
+                            existing.style.opacity = '1';
+                            if (existing._hideTimer) clearTimeout(existing._hideTimer);
+                            existing._hideTimer = setTimeout(function(){ try{ existing.style.opacity='0'; setTimeout(function(){ try{ existing.style.display='none'; }catch(e){} },220); }catch(e){} }, ms);
+                            return existing;
+                        }
+
+                        var toast = doc.createElement('div');
+                        toast.id = id;
+                        toast.setAttribute('role','status');
+                        var style = toast.style;
+                        // default appearance
+                        style.position = 'fixed';
+                        style.display = 'none';
+                        style.alignItems = 'center';
+                        style.justifyContent = 'center';
+                        style.background = 'rgba(0,0,0,0.75)';
+                        style.color = '#fff';
+                        style.zIndex = 2147483647;
+                        style.fontSize = '15px';
+                        style.textAlign = 'center';
+                        style.padding = '10px 16px';
+                        style.borderRadius = '10px';
+                        style.maxWidth = '92%';
+                        style.boxSizing = 'border-box';
+                        style.pointerEvents = 'auto';
+                        style.transition = 'opacity 220ms ease, transform 220ms ease';
+                        style.opacity = '0';
+
+                        // placement handling
+                        if (placement === 'center' || placement === 'fullscreen-center' || placement === 'inside-fullscreen-center'){
+                            style.top = '50%';
+                            style.left = '50%';
+                            style.transform = 'translate(-50%, -50%)';
+                        } else if (placement === 'top-center'){
+                            style.top = '20px';
+                            style.left = '50%';
+                            style.transform = 'translateX(-50%)';
+                        } else if (placement === 'top-left'){
+                            style.top = '20px';
+                            style.left = '20px';
+                        } else if (placement === 'top-right'){
+                            style.top = '20px';
+                            style.right = '20px';
+                        } else if (placement === 'bottom-left'){
+                            style.bottom = '20px';
+                            style.left = '20px';
+                        } else if (placement === 'bottom-right'){
+                            style.bottom = '20px';
+                            style.right = '20px';
+                        } else {
+                            // bottom-center default
+                            style.bottom = '20px';
+                            style.left = '50%';
+                            style.transform = 'translateX(-50%)';
+                        }
+
+                        try { (doc.body || doc.documentElement).appendChild(toast); } catch(e){
+                            try { doc.documentElement.appendChild(toast); } catch(e){ return null; }
+                        }
+
+                        toast.textContent = msg || '⚠️ Pelanggaran terdeteksi';
+                        toast.style.display = 'flex';
+                        setTimeout(function(){ try{ toast.style.opacity = '1'; }catch(e){} }, 10);
+                        toast._hideTimer = setTimeout(function(){ try{ toast.style.opacity = '0'; } catch(e){}; setTimeout(function(){ try{ toast.style.display='none'; }catch(e){} }, 220); }, ms);
+                        return toast;
+                    } catch(e){ return null; }
+                }
+
+                try{
+                    var fs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+                    if (fs) {
+                        try {
+                            var tag = (fs.tagName || '').toUpperCase();
+                            if (tag === 'IFRAME') {
+                                var win = null;
+                                try { win = fs.contentWindow; } catch(e){ win = null; }
+                                var doc = null;
+                                try { doc = fs.contentDocument || (win && win.document); } catch(e){ doc = null; }
+                                if (doc && doc.body) {
+                                    // same-origin iframe: create centered toast inside iframe document
+                                    if (createToastInDocument(doc, placement || 'center')) return;
+                                }
+                                // cross-origin iframe: request iframe to show toast via postMessage (ask for center placement)
+                                try { if (win && win.postMessage) win.postMessage({ type: 'exam-protect.showViolation', msg: msg, ms: ms, placement: placement || 'center' }, '*'); } catch(e){}
+                            } else {
+                                // Fullscreen element is an element in this document: append centered toast inside it
+                                try {
+                                    var el = fs;
+                                    var docOfEl = el.ownerDocument || document;
+                                    // create toast in the document with center placement
+                                    var toastEl = createToastInDocument(docOfEl, placement || 'center');
+                                    if (toastEl && el.appendChild) {
+                                        try {
+                                            // When moving into the fullscreen element, switch to absolute positioning to center inside element
+                                            toastEl.style.position = 'absolute';
+                                            toastEl.style.top = '50%';
+                                            toastEl.style.left = '50%';
+                                            toastEl.style.right = 'auto';
+                                            toastEl.style.bottom = 'auto';
+                                            toastEl.style.transform = 'translate(-50%, -50%)';
+                                            el.appendChild(toastEl);
+                                            return;
+                                        } catch(e){}
+                                    }
+                                    // if failed to append to element, leave toast in document
+                                    return;
+                                } catch(e){}
+                            }
+                        } catch(e){}
+                    }
+                } catch(e){}
+
+                // Default: show in current document with requested placement
+                createToastInDocument(document, placement || 'bottom-center');
+            }
+
+            // Listen for postMessage requests from parent/other windows to show violation inside this document (useful when this page is loaded inside an iframe)
+            try{
+                window.addEventListener('message', function(ev){
+                    try{
+                        var data = ev && ev.data;
+                        if (!data || typeof data !== 'object') return;
+                        if (data.type === 'exam-protect.showViolation'){
+                            showViolationNotice(data.msg || '⚠️ Pelanggaran terdeteksi', data.ms || 1600, data.placement);
+                        }
+                    } catch(e){}
+                }, false);
+            } catch(e){}
+
+            function isEditableTarget(t){
+                if (!t) return false;
+                if (t.nodeType === 3) t = t.parentNode;
+                try{ if (t.closest) { var el = t.closest('input, textarea, button, select, [contenteditable]'); if (el) return true; } } catch(e){}
+                var tag = (t.tagName || '').toUpperCase();
+                return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT' || t.isContentEditable === true;
+            }
+
+            var captureOpts = { capture: true, passive: false };
+
+            // Prevent selection and dragging globally (except editable fields)
+            ['selectstart','dragstart','dragover','drop','contextmenu'].forEach(function(ev){
+                document.addEventListener(ev, function(e){
+                    if (isEditableTarget(e.target)) return; // allow user interaction in inputs
+                    try{ e.preventDefault(); e.stopImmediatePropagation(); } catch(err){}
+                    if (ev === 'contextmenu') {
+                        if (dedupeLog('contextmenu',800)) { safeLogViolation('Context Menu','Blocked right-click', 'Medium'); showViolationNotice('⚠️ Klik kanan diblokir', 1200); }
+                    } else {
+                        if (dedupeLog(ev,800)) { safeLogViolation(ev.charAt(0).toUpperCase()+ev.slice(1)+' Attempt','Blocked '+ev, 'Medium'); }
+                    }
+                    return false;
+                }, captureOpts);
+            });
+
+            // Disable image dragging/selection and keep it disabled for dynamically added images
+            function disableImageDrag(root){ try{ (root||document).querySelectorAll && (root||document).querySelectorAll('img').forEach(function(img){ img.draggable = false; img.style.userSelect = 'none'; img.style.pointerEvents = 'auto'; }); }catch(e){}
+            }
+            disableImageDrag(document);
+            try{
+                new MutationObserver(function(muts){ muts.forEach(function(m){ if (m.addedNodes) m.addedNodes.forEach(function(n){ try{ disableImageDrag(n); }catch(e){} }); }); }).observe(document.documentElement, { childList:true, subtree:true });
+            } catch(e){}
+
+            // Clipboard protection (allow inside editable fields)
+            ['copy','cut','paste'].forEach(function(ev){
+                document.addEventListener(ev, function(e){
+                    if (isEditableTarget(e.target)) return; // allow within inputs
+                    try{ if (e.clipboardData) e.clipboardData.setData('text/plain','ACTION BLOCKED'); else if (window.clipboardData) window.clipboardData.setData('Text','ACTION BLOCKED'); } catch(err){}
+                    try{ e.preventDefault(); e.stopImmediatePropagation(); } catch(err){}
+                    if (dedupeLog(ev,900)) { safeLogViolation(ev.charAt(0).toUpperCase()+ev.slice(1)+' Attempt', 'Blocked global '+ev, 'Medium'); showViolationNotice('⚠️ Aksi diblokir: '+ev, 1200); }
+                    return false;
+                }, captureOpts);
+            });
+
+            // Key handlers: block common shortcuts and screenshot combos
+            document.addEventListener('keydown', function(e){
+                var key = (e.key || '').toLowerCase();
+                var ctrl = e.ctrlKey || e.metaKey;
+
+                // Block F12, Ctrl/Cmd+S,P,U and devtools combos
+                if (key === 'f12' || (ctrl && (key === 's' || key === 'p' || key === 'u')) || (e.ctrlKey && e.shiftKey && (key === 'i' || key === 'j')) ){
+                    try{ e.preventDefault(); e.stopImmediatePropagation(); } catch(err){}
+                    if (dedupeLog('blocked_shortcut',1200)) { safeLogViolation('Blocked Shortcut','Blocked '+(ctrl? 'Ctrl/Meta+':'')+e.key, 'High'); showViolationNotice('⚠️ Shortcut diblokir', 1200); }
+                    return false;
+                }
+
+                // Detect screenshot shortcuts (Win/Cmd + Shift + S)
+                if (key === 's' && e.shiftKey && (e.metaKey || e.ctrlKey)){
+                    try{ e.preventDefault(); e.stopImmediatePropagation(); } catch(err){}
+                    if (dedupeLog('screenshot_shortcut',1200)) { safeLogViolation('Screenshot Attempt','Screenshot shortcut detected', 'High'); showViolationNotice('⚠️ Screenshot tidak diperbolehkan', 1600); }
+                    return false;
+                }
+
+                // Prevent zoom shortcuts
+                if (ctrl && (key === '+' || key === '=' || key === '-' || key === '0')){
+                    try{ e.preventDefault(); e.stopImmediatePropagation(); } catch(err){}
+                    return false;
+                }
+
+            }, captureOpts);
+
+            // Detect PrintScreen key on keyup
+            document.addEventListener('keyup', function(e){
+                if (e.key === 'PrintScreen' || e.keyCode === 44){
+                    try{ navigator.clipboard && navigator.clipboard.writeText && navigator.clipboard.writeText('SCREENSHOT NOT ALLOWED'); } catch(e){}
+                    if (dedupeLog('printscreen',1200)) { safeLogViolation('Screenshot Attempt','PrintScreen key detected', 'High'); showViolationNotice('⚠️ Screenshot tidak diperbolehkan', 2000); }
+                }
+            }, captureOpts);
+
+            // Prevent pinch-zoom and wheel-zoom
+            document.addEventListener('wheel', function(e){ if (e.ctrlKey || e.metaKey) { try{ e.preventDefault(); e.stopImmediatePropagation(); }catch(e){} return false; } }, { passive:false, capture:true });
+            document.addEventListener('touchmove', function(e){ if (e.touches && e.touches.length > 1) { try{ e.preventDefault(); e.stopImmediatePropagation(); }catch(e){} return false; } }, { passive:false, capture:true });
+
+            // beforeprint detection
+            window.addEventListener('beforeprint', function(){ if (dedupeLog('beforeprint',1000)) { safeLogViolation('Print Attempt','beforeprint detected','High'); showViolationNotice('⚠️ Pencetakan tidak diperbolehkan', 2000); } });
+
+            // Devtools detection heuristic
+            (function(){
+                var devtoolsOpen = false;
+                setInterval(function(){
+                    try{
+                        var threshold = 160;
+                        var widthDiff = Math.abs(window.outerWidth - window.innerWidth);
+                        var heightDiff = Math.abs(window.outerHeight - window.innerHeight);
+                        var open = widthDiff > threshold || heightDiff > threshold;
+                        if (open && !devtoolsOpen){ devtoolsOpen = true; if (dedupeLog('devtools',2000)) { safeLogViolation('DevTools Open','Possible devtools opened','High'); showViolationNotice('⚠️ DevTools terdeteksi', 1800); } }
+                        if (!open && devtoolsOpen) devtoolsOpen = false;
+                    } catch(e){}
+                }, 1000);
+            })();
+
+            // Visibility / focus monitoring
+            document.addEventListener('visibilitychange', function(){ if (document.hidden) { if (dedupeLog('visibility_hidden',1500)) { safeLogViolation('Window Focus Lost','visibilitychange hidden','High'); showViolationNotice('⚠️ Anda berpindah aplikasi', 1400); } } });
+
+            // expose helper for other scripts
+            window.__examProtect = { active: true, showViolationNotice: showViolationNotice, safeLogViolation: safeLogViolation };
+        })();
+        </script>
 </head>
 <body>
     <!-- Lock Screen - Linktree Style -->
@@ -2678,9 +3719,8 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
 
 
             <h1 class="lock-title" style="margin-top: 0; margin-bottom: 4px;">SELAMAT DATANG </h1>
-            <h1 class="lock-title" style="margin-top: 0; margin-bottom: 8px;">-----------------</h1>
             <p class="lock-subtitle" style="max-width:700px;width:100%;margin-left:auto;margin-right:auto;text-align:center;">
-                Pengendali Ujian anti nyontek untuk Google Form,Wayground,Kahoot dll, Mari kita awali Ujian ini dengan do`a, semoga lancar dan sukses, Amin.
+                Di Pengendali Ujian anti nyontek, Silahkan pasang Link soal di sini, Mari kita awali Ujian ini dengan do`a, semoga lancar dan sukses, Amin.
             </p>
 
             <!-- Linktree-style Exam List Container -->
@@ -2689,22 +3729,22 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
 
                 <!-- Pilihan Role (Dropdown) -->
                 <div class="form-group">
-                    <label for="roleSelect" style="font-size:14px;font-weight:600;color:#fff;margin-bottom:4px;">Masuk Sebagai Siswa/Guru</label>
+                    <label for="roleSelect" style="font-size:14px;font-weight:600;color:#1f2937;margin-bottom:4px;">Pilih Role Siswa/Guru</label>
                     <select id="roleSelect" class="form-input login-input" style="width:100%;min-width:120px;max-width:100%;padding:12px 16px;font-size:18px;border:1.5px solid #d1d5db;border-radius:8px;box-sizing:border-box;">
                         <option value="siswa" selected>SISWA</option>
-                        <option value="guru">GURU/ADMIN</option>
+                        <option value="guru">GURU</option>
                     </select>
                 </div>
                 <!-- Kotak Validasi NPSN & PIN -->
                 <div class="form-group" id="npsnPinValidationBox">
                     <input type="text" id="npsnInput" class="form-input login-input" placeholder="NPSN" maxlength="8" style="width:100%;min-width:120px;max-width:100%;padding:10px 16px 13px 16px;margin-bottom:4px;font-size:18px;border:1.5px solid #d1d5db;border-radius:8px;box-sizing:border-box;">
-                    <input type="password" id="pinInput" class="form-input login-input" placeholder="PIN" maxlength="8" style="width:100%;min-width:120px;max-width:100%;padding:12px 16px;font-size:18px;border:1.5px solid #d1d5db;border-radius:8px;box-sizing:border-box;margin-top:8px;">
-                    <button type="button" class="btn btn-primary" onclick="validateNpsnPin()">Validasi</button>
-                    <div id="npsnPinValidationMsg" style="margin-top:8px; color:#ef4444; font-weight:600; font-size:13px; display:none;"></div>
+                    <input type="password" id="pinInput" class="form-input login-input" placeholder="PIN Soal" maxlength="8" style="width:100%;min-width:120px;max-width:100%;padding:12px 16px;font-size:18px;border:1.5px solid #d1d5db;border-radius:8px;box-sizing:border-box;margin-top:8px;">
+                    <button type="button" class="btn btn-primary" onclick="validateNpsnPin()">Login</button>
+                    <div id="npsnPinValidationMsg" style="margin-top:8px; color:#dc2626; font-weight:600; font-size:13px; display:none;"></div>
                 </div>
                 <div class="form-group" id="examDropdownGroup" style="display:none;">
                     <select id="examListDropdown" class="form-input" onchange="selectExamFromDropdown()" disabled>
-                        <option value="">-- Pilih Ujian / Mapel --</option>
+                        <option value="">-- Pilih Mapel Ujian --</option>
                     </select>
                 </div>
     <style>
@@ -2747,6 +3787,16 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             box-sizing: border-box;
             transition: border-color 0.2s;
         }
+        /* Arrow hanya untuk select dropdown */
+        select.login-input {
+            background: #e5e7eb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322223b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 12px center;
+            background-size: 20px 20px;
+            padding: 12px 40px 12px 16px;
+        }
+        select.login-input:focus {
+            background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322223b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 12px center;
+            background-size: 20px 20px;
+        }
         .form-select.login-input:focus, .form-input.login-input:focus {
             outline: none;
             border-color: #6366f1;
@@ -2776,16 +3826,34 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             padding:10px 18px;
             margin-top:7px;
             margin-bottom:0;
+            /* Bright blue contrast */
+            background: linear-gradient(180deg,#1e90ff,#006be6);
+            color: #ffffff;
+            border: none;
+            box-shadow: 0 10px 26px rgba(30,144,255,0.14);
+            font-weight: 800;
+            border-radius: 10px;
+            transition: transform 120ms ease, filter 120ms ease;
         }
+        #npsnPinValidationBox .btn:hover { filter: brightness(0.96); transform: translateY(-1px); }
+        #npsnPinValidationBox .btn:active { transform: translateY(0); }
+        #npsnPinValidationBox .btn:focus { outline: 3px solid rgba(30,144,255,0.16); outline-offset: 2px; }
         @media (min-width:700px) {
-            /* Arrange NPSN and PIN side-by-side on wider screens, tombol tetap center */
-            #npsnPinValidationBox { flex-direction:row; align-items:center; flex-wrap:wrap; }
-            #npsnPinValidationBox input { flex:1; margin-bottom:0; }
+            /* Arrange NPSN and PIN side-by-side on wider screens, but keep Login button centered below */
+            #npsnPinValidationBox {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                align-items: center;
+                justify-items: stretch;
+            }
+            #npsnPinValidationBox input { width:100%; margin-bottom:0; }
             #npsnPinValidationBox .btn {
-                margin-left:0;
-                align-self:center;
+                grid-column: 1 / -1;
+                justify-self: center;
                 min-width: 120px;
                 width: auto;
+                margin-top: 8px;
             }
         }
     </style>
@@ -2794,59 +3862,314 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             <!-- Tombol Admin selalu tampil di bawah tombol Simpan -->
 
             <script>
-            // Tampilkan kotak NPSN & PIN jika SISWA, buka modal admin jika GURU/ADMIN
+            // Flow autentikasi guru: NPSN → Tanya mode (Login/Registrasi) → Modal
             var roleSelect = document.getElementById('roleSelect');
             var npsnPinValidationBox = document.getElementById('npsnPinValidationBox');
+            var currentGuruNpsn = ''; // Simpan NPSN guru yang sedang login
+            
             function updateRoleUI() {
                 if (roleSelect.value === 'guru') {
                     npsnPinValidationBox.style.display = 'none';
+                    // Prompt NPSN terlebih dahulu
                     setTimeout(function() {
-                        openAdminNpsnModal();
+                        promptGuruNpsn();
                     }, 200);
                 } else {
                     npsnPinValidationBox.style.display = 'flex';
                 }
             }
+            
+            // Prompt user untuk input NPSN menggunakan modal
+            function promptGuruNpsn() {
+                showInput('Masukkan NPSN Anda (8 digit)', '', 'Input NPSN');
+                modalInputCallback = function(npsn) {
+                    if (!npsn) {
+                        // User batal
+                        roleSelect.value = '';
+                        return;
+                    }
+                    
+                    npsn = npsn.trim();
+                    if (!npsn || npsn.length !== 8 || !/^\d+$/.test(npsn)) {
+                        showNotifikasi('NPSN harus 8 digit angka', '❌ Format Tidak Valid', 'error');
+                        modalNotifikasiCallback = function() {
+                            promptGuruNpsn(); // Retry
+                        };
+                        return;
+                    }
+                    
+                    currentGuruNpsn = npsn;
+                    promptGuruMode(npsn); // Lanjut ke pilihan mode
+                };
+            }
+            
+            // Prompt user memilih login atau registrasi menggunakan popup tombol
+            function promptGuruMode(npsn) {
+                showModeSelectionModal(npsn);
+                modalModeSelectionCallback = function(mode) {
+                    mode = (mode || '').trim();
+                    
+                    if (!mode || mode === 'cancel') {
+                        roleSelect.value = '';
+                        return;
+                    }
+                    
+                    if (mode === 'login') {
+                        showLoginModal(npsn);
+                    } else if (mode === 'register') {
+                        showRegistrasiModal(npsn);
+                    } else {
+                        showNotifikasi('Pilihan mode tidak valid. Silakan pilih lagi.', '❌ Error', 'error');
+                        modalNotifikasiCallback = function() {
+                            promptGuruMode(npsn); // Retry
+                        };
+                    }
+                };
+            }
+            
+            // Tampilkan modal registrasi
+            function showRegistrasiModal(npsn) {
+                document.getElementById('regNpsn').value = npsn;
+                document.getElementById('regNamaGuru').value = '';
+                document.getElementById('regPassword').value = '';
+                document.getElementById('regPasswordConfirm').value = '';
+                document.getElementById('regPasswordError').style.display = 'none';
+                document.getElementById('modalGuruRegisterPassword').style.display = 'block';
+                // Focus ke nama guru
+                setTimeout(function() {
+                    document.getElementById('regNamaGuru').focus();
+                }, 100);
+            }
+            
+            // Tampilkan modal login
+            function showLoginModal(npsn) {
+                document.getElementById('loginNpsn').value = npsn;
+                document.getElementById('loginPassword').value = '';
+                document.getElementById('loginPasswordError').style.display = 'none';
+                document.getElementById('modalGuruLoginPassword').style.display = 'block';
+                // Focus ke password
+                setTimeout(function() {
+                    document.getElementById('loginPassword').focus();
+                }, 100);
+            }
+            
+            // Tutup modal password
+            function tutupGuruPasswordModal() {
+                document.getElementById('modalGuruRegisterPassword').style.display = 'none';
+                document.getElementById('modalGuruLoginPassword').style.display = 'none';
+                roleSelect.value = '';
+                currentGuruNpsn = '';
+                // Auto-refresh halaman ke state awal yang bersih
+                setTimeout(function() {
+                    window.location.reload();
+                }, 300);
+            }
+            
             roleSelect.addEventListener('change', updateRoleUI);
-            // Inisialisasi saat load
-            updateRoleUI();
+            
+            // Delay inisialisasi untuk memastikan DOM sudah siap
+            setTimeout(function() {
+                // Attach form listeners setelah DOM siap
+                var formReg = document.getElementById('formGuruRegisterPassword');
+                var formLogin = document.getElementById('formGuruLoginPassword');
+                
+                if (formReg) {
+                    formReg.onsubmit = function(e) {
+                        e.preventDefault();
+                        
+                        var npsn = document.getElementById('regNpsn').value.trim();
+                        var nama = document.getElementById('regNamaGuru').value.trim();
+                        var password = document.getElementById('regPassword').value;
+                        var passwordConfirm = document.getElementById('regPasswordConfirm').value;
+                        var errorDiv = document.getElementById('regPasswordError');
+                        
+                        // Validasi
+                        if (!nama) {
+                            errorDiv.textContent = '❌ Nama guru harus diisi';
+                            errorDiv.style.display = 'block';
+                            return;
+                        }
+                        
+                        if (password.length < 6) {
+                            errorDiv.textContent = '❌ Password minimal 6 karakter';
+                            errorDiv.style.display = 'block';
+                            return;
+                        }
+                        
+                        if (password !== passwordConfirm) {
+                            errorDiv.textContent = '❌ Password tidak cocok';
+                            errorDiv.style.display = 'block';
+                            return;
+                        }
+                        
+                        // Submit ke Google Apps Script
+                        var submitBtn = this.querySelector('button[type="submit"]');
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = 'Menyimpan...';
+                        
+                        google.script.run.withSuccessHandler(function(result) {
+                            if (result.success) {
+                                errorDiv.style.display = 'none';
+                                showNotifikasi('Password berhasil disimpan! Silakan login dengan akun Anda.', '✅ Registrasi Berhasil', 'success');
+                                // Buka login modal
+                                document.getElementById('modalGuruRegisterPassword').style.display = 'none';
+                                showLoginModal(npsn);
+                            } else {
+                                errorDiv.textContent = '❌ ' + (result.error || 'Gagal menyimpan password');
+                                errorDiv.style.display = 'block';
+                            }
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Daftar';
+                        }).withFailureHandler(function(error) {
+                            errorDiv.textContent = '❌ Error: ' + error;
+                            errorDiv.style.display = 'block';
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Daftar';
+                        }).saveGuruPassword(npsn, nama, password);
+                    };
+                }
+                
+                if (formLogin) {
+                    formLogin.onsubmit = function(e) {
+                        e.preventDefault();
+                        
+                        var npsn = document.getElementById('loginNpsn').value.trim();
+                        var password = document.getElementById('loginPassword').value;
+                        var errorDiv = document.getElementById('loginPasswordError');
+                        
+                        // Submit ke Google Apps Script
+                        var submitBtn = this.querySelector('button[type="submit"]');
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = 'Login...';
+                        
+                        google.script.run.withSuccessHandler(function(result) {
+                            if (result.valid) {
+                                errorDiv.style.display = 'none';
+                                // showNotifikasi('Login berhasil, selamat datang ' + result.nama + '!', '✅ Login Sukses', 'success');
+                                // Tutup modal password dan buka admin modal
+                                document.getElementById('modalGuruLoginPassword').style.display = 'none';
+                                setTimeout(function() {
+                                    openAdminNpsnModal();
+                                }, 300);
+                            } else {
+                                errorDiv.textContent = '❌ ' + (result.message || 'Login gagal');
+                                errorDiv.style.display = 'block';
+                            }
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Login';
+                        }).withFailureHandler(function(error) {
+                            errorDiv.textContent = '❌ Error: ' + error;
+                            errorDiv.style.display = 'block';
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Login';
+                        }).verifyGuruPassword(npsn, password);
+                    };
+                }
+                
+                updateRoleUI();
+            }, 500);
             </script>
 
-            <!-- Modal Akses Daftar Ujian (Admin/Guru) -->
+            <!-- Modal Registrasi Password Guru -->
+            <div id="modalGuruRegisterPassword" class="modal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+                <div style="background:#fff; margin:0 auto; padding:28px 24px; border-radius:16px; width:min(92%, 360px); max-width:360px; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; top:50%; transform:translateY(-50%);">
+                    <h2 style="font-size:18px;font-weight:700;margin:0 0 8px 0;color:#0052CC;text-align:center;">📝 Registrasi Password Guru</h2>
+                    <p style="text-align:center;color:#666;font-size:13px;margin:0 0 18px 0;">Buat password untuk login Portal Admin</p>
+                    <div id="regPasswordError" style="background:#fee;color:#c33;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px;display:none;"></div>
+                    <form id="formGuruRegisterPassword" style="display:flex;flex-direction:column;gap:16px;">
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <label style="font-size:13px;font-weight:600;color:#333;">NPSN</label>
+                            <input type="text" id="regNpsn" maxlength="8" required style="padding:12px 16px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:15px;height:44px;box-sizing:border-box;" readonly>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <label style="font-size:13px;font-weight:600;color:#333;">Nama Guru / Mapel</label>
+                            <input type="text" id="regNamaGuru" required style="padding:12px 16px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:15px;height:44px;box-sizing:border-box;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <label style="font-size:13px;font-weight:600;color:#333;">Password Baru</label>
+                            <input type="password" id="regPassword" required minlength="6" style="padding:12px 16px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:15px;height:44px;box-sizing:border-box;" placeholder="Min 6 karakter">
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <label style="font-size:13px;font-weight:600;color:#333;">Konfirmasi Password</label>
+                            <input type="password" id="regPasswordConfirm" required style="padding:12px 16px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:15px;height:44px;box-sizing:border-box;" placeholder="Ulangi password">
+                        </div>
+                        <div style="display:flex;gap:12px;margin-top:12px;">
+                            <button type="button" onclick="tutupGuruPasswordModal()" class="btn btn-cancel" style="flex:1;padding:12px;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Batal</button>
+                            <button type="submit" class="btn btn-primary" style="flex:1;padding:12px;border:none;border-radius:8px;cursor:pointer;font-weight:600;background:#10b981;color:#fff;">Daftar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal Login Password Guru -->
+            <div id="modalGuruLoginPassword" class="modal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+                <div style="background:#fff; margin:0 auto; padding:28px 24px; border-radius:16px; width:min(92%, 360px); max-width:360px; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; top:50%; transform:translateY(-50%);">
+                    <h2 style="font-size:18px;font-weight:700;margin:0 0 8px 0;color:#0052CC;text-align:center;">🔐 Login Portal Admin Guru</h2>
+                    <p style="text-align:center;color:#666;font-size:13px;margin:0 0 18px 0;">Masukkan password Anda</p>
+                    <div id="loginPasswordError" style="background:#fee;color:#c33;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px;display:none;"></div>
+                    <form id="formGuruLoginPassword" style="display:flex;flex-direction:column;gap:16px;">
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <label style="font-size:13px;font-weight:600;color:#333;">NPSN</label>
+                            <input type="text" id="loginNpsn" maxlength="8" required style="padding:12px 16px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:15px;height:44px;box-sizing:border-box;" readonly>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <label style="font-size:13px;font-weight:600;color:#333;">Password</label>
+                            <input type="password" id="loginPassword" required style="padding:12px 16px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:15px;height:44px;box-sizing:border-box;" placeholder="Masukkan password">
+                        </div>
+                        <div style="display:flex;gap:12px;margin-top:12px;">
+                            <button type="button" onclick="tutupGuruPasswordModal()" class="btn btn-cancel" style="flex:1;padding:12px;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Batal</button>
+                            <button type="submit" class="btn btn-primary" style="flex:1;padding:12px;border:none;border-radius:8px;cursor:pointer;font-weight:600;background:#0052CC;color:#fff;">Login</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal Kelola Ujian (Guru) -->
 
             <div id="modalAdminNpsn" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.4);">
-                <div style="background:#fff; margin:3% auto; padding:36px 24px 28px 24px; border-radius:18px; width:97%; max-width:540px; box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+                <div style="background:#fff; margin:0 auto; padding:28px 24px 24px 24px; border-radius:16px; width:min(92%, 540px); max-width:540px; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; top:50%; transform:translateY(-50%);">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-                        <h2 style="font-size:22px;font-weight:700;margin:0;color:#0052CC;letter-spacing:0.5px;">Akses Daftar Ujian <span style='font-size:15px;font-weight:400;'>(Guru/Admin)</span></h2>
-                        <button onclick="tutupAdminNpsnModal()" style="background:none;border:none;font-size:26px;color:#888;cursor:pointer;line-height:1;">&times;</button>
+                        <div>
+                            <h2 style="font-size:22px;font-weight:700;margin:0 0 4px 0;color:#0052CC;letter-spacing:0.5px;">Portal Admin <span style='font-size:15px;font-weight:400;'>(Guru)</span></h2>
+                            <div style="font-size:13px;color:#666;">NPSN: <span id="adminHeaderNpsn" style="font-weight:600;">-</span></div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+                            <button onclick="tutupAdminNpsnModal()" style="background:none;border:none;font-size:26px;color:#888;cursor:pointer;line-height:1;">&times;</button>
+                        </div>
                     </div>
                     <div style="display:flex;gap:10px;margin-bottom:18px;">
-                        <button id="tabInputMapel" type="button" onclick="switchAdminTab('input')" style="flex:1;background:#0052CC;color:#fff;border:none;padding:10px 0;border-radius:8px 8px 0 0;font-weight:600;">Input Link ujian</button>
-                        <button id="tabEditMapel" type="button" onclick="switchAdminTab('edit')" style="flex:1;background:#e2e8f0;color:#333;border:none;padding:10px 0;border-radius:8px 8px 0 0;font-weight:600;">Edit Mapel Ujian</button>
+                        <button id="tabInputMapel" type="button" onclick="switchAdminTab('input')" style="flex:1;background:#0052CC;color:#fff;border:none;padding:10px 0;border-radius:8px 8px 0 0;font-weight:600;">Tempel  Link ujian</button>
+                        <button id="tabEditMapel" type="button" onclick="switchAdminTab('edit')" style="flex:1;background:#0052CC;color:#fff;border:none;padding:10px 0;border-radius:8px 8px 0 0;font-weight:600;">Kelola Soal Ujian</button>
                     </div>
                     <div id="adminTabInput" style="display:block;">
                                                 <form id="formUjianGuru" style="margin-bottom:18px;">
-                                                    <div class="form-grid-mapel">
-                                                        <div class="form-col">
-                                                            <label for="npsnGuru" class="form-label">NPSN</label>
-                                                            <input type="text" id="npsnGuru" maxlength="8" required class="form-input">
+                                                    <div id="formUjianGuruContainer" style="display:grid;grid-template-columns:1fr 1fr;gap:24px 20px;align-items:start;padding:0;">
+                                                        <!-- Kolom Kiri: NPSN, Nama Guru -->
+                                                        <div style="display:flex;flex-direction:column;gap:18px;">
+                                                            <div class="form-col">
+                                                                <label for="npsnGuru" class="form-label">NPSN</label>
+                                                                <input type="text" id="npsnGuru" maxlength="8" required class="form-input">
+                                                            </div>
+                                                            <div class="form-col">
+                                                                <label for="namaGuru" class="form-label">Nama Guru / Mapel</label>
+                                                                <input type="text" id="namaGuru" required class="form-input">
+                                                            </div>
                                                         </div>
-                                                        <div class="form-col">
-                                                            <label for="pinGuru" class="form-label">PIN ujian</label>
-                                                            <input type="password" id="pinGuru" maxlength="8" required class="form-input">
+                                                        <!-- Kolom Kanan: PIN, Link Ujian -->
+                                                        <div style="display:flex;flex-direction:column;gap:18px;">
+                                                            <div class="form-col">
+                                                                <label for="pinGuru" class="form-label">PIN Soal</label>
+                                                                <input type="text" id="pinGuru" maxlength="8" required class="form-input" inputmode="numeric" pattern="\d*" title="Hanya angka">
+                                                            </div>
+                                                            <div class="form-col">
+                                                                <label for="linkUjian" class="form-label">Tempel Link Ujian</label>
+                                                                <textarea id="linkUjian" required placeholder="https://---" class="form-textarea" rows="3"></textarea>
+                                                            </div>
                                                         </div>
-                                                        <div class="form-col form-col-full">
-                                                            <label for="namaGuru" class="form-label">Nama Guru / Mapel</label>
-                                                            <input type="text" id="namaGuru" required class="form-input">
-                                                        </div>
-                                                        <div class="form-col form-col-full">
-                                                            <label for="linkUjian" class="form-label">Link Ujian</label>
-                                                            <input type="url" id="linkUjian" required placeholder="https://---" class="form-input">
-                                                        </div>
-                                                        <div class="form-col form-actions">
-                                                            <button type="button" onclick="tutupAdminNpsnModal()" class="btn btn-cancel">Batal</button>
-                                                            <button type="submit" class="btn btn-primary">Simpan</button>
-                                                        </div>
+                                                    </div>
+                                                    <div class="form-col form-actions" style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:nowrap;margin-top:24px;width:100%;grid-column:1/3;">
+                                                        <button type="button" onclick="tutupAdminNpsnModal()" class="btn btn-cancel" style="flex:0 1 auto;min-width:110px;">Batal</button>
+                                                        <button type="submit" class="btn btn-primary" style="flex:0 1 auto;min-width:110px;">Simpan</button>
                                                     </div>
                                                 </form>
                     </div>
@@ -2857,12 +4180,12 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                                 <label style='font-size:13px;font-weight:600;color:#333;padding-left:2px;margin-bottom:0;'>Validasi NPSN & PIN</label>
                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                                     <input type="text" id="filterNpsnAdmin" placeholder="NPSN" maxlength="8" autocomplete="off" autocapitalize="off" inputmode="numeric" style="padding:14px 16px;border:1.5px solid #cbd5e1;border-radius:8px;width:100%;font-size:15px;height:44px;box-sizing:border-box;">
-                                    <input type="password" id="filterPinAdmin" placeholder="PIN ujian" maxlength="8" autocomplete="new-password" inputmode="numeric" style="padding:14px 16px;border:1.5px solid #cbd5e1;border-radius:8px;width:100%;font-size:15px;height:44px;box-sizing:border-box;">
+                                    <input type="password" id="filterPinAdmin" placeholder="PIN Soal" maxlength="8" autocomplete="new-password" inputmode="numeric" style="padding:14px 16px;border:1.5px solid #cbd5e1;border-radius:8px;width:100%;font-size:15px;height:44px;box-sizing:border-box;">
                                 </div>
                             </div>
                         </div>
                         <div style="width:100%;display:flex;justify-content:flex-end;margin-bottom:18px;">
-                            <button type="button" id="btnTampilkanMapelAdmin" onclick="validateAdminEditMapel()" style="background:#10b981;color:#fff;border:none;padding:14px 26px;border-radius:8px;font-weight:600;height:44px;display:flex;align-items:center;">Tampilkan</button>
+                            <button type="button" id="btnTampilkanMapelAdmin" onclick="validateAdminEditMapel()" style="background:rgba(14,165,255,0.12);color:#0ea5ff;border:1.5px solid rgba(14,165,255,0.4);padding:10px 20px;border-radius:8px;font-weight:600;height:40px;display:flex;align-items:center;cursor:pointer;">Refresh</button>
                         </div>
                         <div id="daftarUjianGuruContainer" style="margin-top:10px;"></div>
                         <div id="daftarSemuaMapelContainer" style="margin-top:10px;display:none;"></div>
@@ -2913,19 +4236,20 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                                         }
                                         var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
                                         links.forEach(function(u, idx){
-                                            var escapedUrl = (u.url||'').replace(/"/g,'&quot;');
-                                            var statusHtml = (u.status === 'Aktif' || !u.status)?'<span style="color:#10b981;font-weight:600;">Aktif</span>':'<span style="color:#aaa;">Nonaktif</span>';
-                                            html += '<div data-url="'+escapedUrl+'" style="background:#fff;border:1px solid #f1f5f9;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;">'
+                                            var safeUrl = (u.url||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                                            var safeSubject = (u.subject||'-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                                            var isAktif = (u.status === 'Aktif' || !u.status);
+                                            var statusHtml = isAktif ? '<span style="color:#10b981;font-weight:600;">Aktif</span>' : '<span style="color:#aaa;">Nonaktif</span>';
+                                            html += '<div data-url="'+safeUrl+'" style="background:#fff;border:1px solid #f1f5f9;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;">'
                                                 +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">'
-                                                    +'<div style="font-weight:700;color:#0052CC;font-size:15px;">'+(u.subject || '-')+'</div>'
-                                                    +'<div style="font-size:12px;color:#64748b;">NPSN: '+(u.npsn||'-')+' • PIN: '+(u.pin||'-')+'</div>'
+                                                    +'<div style="font-weight:700;color:#0052CC;font-size:15px;">'+safeSubject+'</div>'
                                                 +'</div>'
                                                 +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">'
                                                     +'<div style="color:#475569;">'+statusHtml+'</div>'
                                                     +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-                                                        +'<button onclick="openEditValidation(\''+u.url+'\')" style="background:#f1f5f9;color:#0052CC;border:none;padding:8px 12px;border-radius:5px;font-size:13px;cursor:pointer;">Edit</button>'
-                                                        +'<button onclick="deleteExam(\''+u.url+'\', this)" style="background:#ffeef0;color:#ef4444;border:none;padding:8px 12px;border-radius:5px;font-size:13px;cursor:pointer;">Hapus</button>'
-                                                        +'<button onclick="toggleStatusExam(\''+u.url+'\', this)" style="background:'+(u.status === 'Aktif' || !u.status ? '#fef9c3' : '#dbeafe')+';color:'+(u.status === 'Aktif' || !u.status ? '#b45309' : '#2563eb')+';border:none;padding:8px 12px;border-radius:5px;font-size:13px;cursor:pointer;">'+(u.status === 'Aktif' || !u.status ? 'Nonaktifkan' : 'Aktifkan')+'</button>'
+                                                        +'<button data-url="'+safeUrl+'" onclick="openEditValidation(this.dataset.url, this)" style="background:#f1f5f9;color:#0052CC;border:none;padding:8px 12px;border-radius:5px;font-size:13px;cursor:pointer;">Edit</button>'
+                                                        +'<button data-url="'+safeUrl+'" onclick="deleteExam(this.dataset.url, this)" style="background:#ffeef0;color:#ef4444;border:none;padding:8px 12px;border-radius:5px;font-size:13px;cursor:pointer;">Hapus</button>'
+                                                        +'<button data-url="'+safeUrl+'" onclick="toggleStatusExam(this.dataset.url, this)" style="background:'+(isAktif ? '#fef9c3' : '#dbeafe')+';color:'+(isAktif ? '#b45309' : '#2563eb')+';border:none;padding:8px 12px;border-radius:5px;font-size:13px;cursor:pointer;">'+(isAktif ? 'Nonaktifkan' : 'Aktifkan')+'</button>'
                                                     +'</div>'
                                                 +'</div>'
                                             +'</div>';
@@ -2936,43 +4260,54 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                                 }
                                 </script>
                         <div id="editMapelFormContainer" style="display:none;margin-top:18px;background:#f8fafc;padding:18px 14px;border-radius:10px;max-width:600px;margin-left:auto;margin-right:auto;display:flex;flex-direction:column;align-items:center;">
-                            <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#0052CC;text-align:center;">Edit Mapel</h3>
+                            <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#0052CC;text-align:center;">Segera Ganti  PIN </h3>
+
+                            <!-- Quick PIN change UI: shows current NPSN & PIN, generated new PIN, Save & Cancel -->
+                            <div id="editQuickPinContainer" style="display:none;width:100%;max-width:480px;">
+                                <div style="display:flex;flex-direction:column;gap:8px;">
+                                    <label class="form-label">NPSN</label>
+                                    <input type="text" id="currentNpsnDisplay" class="form-input" readonly>
+
+                                    <label class="form-label">PIN Anda Saat Ini</label>
+                                    <input type="password" id="currentPinDisplay" class="form-input" readonly>
+
+                                    <label class="form-label">Segera Ganti PIN Baru untuk Login berikutnya </label>
+                                    <div style="display:flex;gap:4px;align-items:center;">
+                                        <input type="text" id="newPinDisplay" class="form-input" placeholder="---PIN baru---" style="flex:1;">
+                                    </div>
+
+                                    <div style="display:flex;gap:14px;justify-content:center;margin-top:12px;">
+                                        <button type="button" id="btnCancelQuickEdit" class="btn btn-cancel" style="flex:1 1 0;max-width:180px;">Batal</button>
+                                        <button type="button" id="btnSaveQuickPin" class="btn btn-primary" style="flex:1 1 0;max-width:180px;background:linear-gradient(180deg,#0ea5ff,#0284c7);color:#fff;border:none;box-shadow:0 8px 20px rgba(14,165,255,0.18);font-weight:700;">Simpan</button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <form id="formEditMapel" style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:480px;">
                                 <div class="form-grid-mapel" style="width:100%;justify-items:center;">
-                                                                    <div class="form-col">
+                                                                    <div class="form-col form-col-full">
                                                                         <label for="editNpsnGuru" class="form-label">NPSN</label>
-                                                                        <input type="text" id="editNpsnGuru" maxlength="8" required autocomplete="off" autocapitalize="off" inputmode="numeric" class="form-input">
-                                                                    </div>
-                                                                    <div class="form-col">
-                                                                        <label for="editPinGuru" class="form-label">PIN</label>
-                                                                        <input type="password" id="editPinGuru" maxlength="8" required autocomplete="new-password" inputmode="numeric" class="form-input">
+                                                                        <input type="text" id="editNpsnGuru" maxlength="8" readonly class="form-input" style="background:#f1f5f9;color:#666;">
                                                                     </div>
                                                                     <div class="form-col form-col-full">
-                                                                        <label for="editNamaGuru" class="form-label">Nama Guru / Mapel</label>
-                                                                        <input type="text" id="editNamaGuru" required class="form-input">
+                                                                        <label for="editPinGuru" class="form-label">PIN Saat Ini</label>
+                                                                        <input type="text" id="editPinGuru" maxlength="8" readonly autocomplete="new-password" inputmode="numeric" pattern="\d*" class="form-input" style="background:#f1f5f9;color:#666;">
                                                                     </div>
                                                                     <div class="form-col form-col-full">
-                                                                        <label for="editLinkUjian" class="form-label">Link Ujian</label>
-                                                                        <input type="url" id="editLinkUjian" required placeholder="-https://" class="form-input">
+                                                                        <label for="editPinBaru" class="form-label">PIN Baru</label>
+                                                                        <input type="text" id="editPinBaru" maxlength="8" required autocomplete="new-password" inputmode="numeric" pattern="\d*" placeholder="Masukkan PIN baru" class="form-input" style="border:2px solid #10b981;background:#ecfdf5;">
                                                                     </div>
-                                                                                                                            <div class="form-col form-col-full" style="gap:8px;">
-                                                                                                                            <label style='font-size:13px;font-weight:600;color:#333;padding-left:2px;margin-bottom:0;'>Validasi NPSN & PIN (opsional)</label>
-                                                                                                                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                                                                                                                                <input type="text" id="editValidasiNpsn" maxlength="8" autocomplete="off" autocapitalize="off" inputmode="numeric" class="form-input" style="border:1.5px solid #f59e42;background:#fffbe9;" placeholder="NPSN">
-                                                                                                                                <input type="password" id="editValidasiPin" maxlength="8" autocomplete="new-password" inputmode="numeric" class="form-input" style="border:1.5px solid #f59e42;background:#fffbe9;" placeholder="PIN">
-                                                                                                                            </div>
-                                                                                                                        </div>
                                                                     <div class="form-col form-actions form-col-full" style="display:flex;gap:14px;justify-content:center;margin-top:18px;width:100%;">
                                                                         <button type="button" onclick="batalEditMapel()" class="btn btn-cancel" style="flex:1 1 0;max-width:180px;">Batal</button>
-                                                                        <button type="submit" class="btn btn-primary" style="flex:1 1 0;max-width:180px;">Simpan Perubahan</button>
+                                                                        <button type="submit" class="btn btn-primary" style="flex:1 1 0;max-width:180px;background:linear-gradient(180deg,#10b981,#059669);border:none;">Simpan PIN</button>
                                                                     </div>
                                                                 </div>
                                         <style>
                                         /* Grid form mapel admin/guru */
                                         .form-grid-mapel {
                                             display: grid;
-                                            grid-template-columns: 1fr 1fr;
-                                            gap: 24px 20px;
+                                            grid-template-columns: 1fr;
+                                            gap: 18px 0;
                                             align-items: end;
                                             padding: 0;
                                             justify-items: center;
@@ -2984,12 +4319,12 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                                             padding: 0;
                                         }
                                         .form-col-full {
-                                            grid-column: 1/3;
+                                            grid-column: 1;
                                         }
                                         .form-actions {
-                                            grid-column: 2/3;
+                                            grid-column: 1;
                                             display: flex;
-                                            justify-content: flex-end;
+                                            justify-content: center;
                                             gap: 8px;
                                             margin-top: 10px;
                                         }
@@ -3040,14 +4375,6 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                                                 max-width: 100%;
                                             }
                                         }
-                                        </div>
-                                        <!-- Footer -->
-                                        <footer style="width:100vw;text-align:center;padding:18px 0 10px 0;font-size:15px;color:#888;letter-spacing:0.5px;">
-                                            <span id="footerYear"></span>@guru indonesia hebat
-                                        </footer>
-                                        <script>
-                                            document.getElementById('footerYear').textContent = new Date().getFullYear()+' ';
-                                        </script>
                                         @media (max-width: 600px) {
                                             .form-grid-mapel {
                                                 grid-template-columns: 1fr;
@@ -3055,13 +4382,87 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                                             .form-col-full, .form-actions {
                                                 grid-column: 1/2 !important;
                                             }
+                                            /* Tombol action tetap berdampingan di HP: */
                                             .form-actions {
-                                                justify-content: stretch;
-                                                flex-direction: column;
+                                                justify-content: center;
+                                                flex-direction: row;
                                                 gap: 8px;
+                                                flex-wrap: nowrap;
+                                            }
+                                            .form-actions .btn {
+                                                flex: 1 1 calc(50% - 4px);
+                                                max-width: calc(50% - 4px);
+                                                min-width: 0;
                                             }
                                         }
                                         </style>
+                                        <footer style="width:100vw;text-align:center;padding:18px 0 10px 0;font-size:15px;color:#888;letter-spacing:0.5px;">
+                                            <span id="footerYear"></span>@guru indonesia hebat
+                                        </footer>
+                                        <script>
+                                            document.getElementById('footerYear').textContent = new Date().getFullYear()+' ';
+                                        </script>
+                                        <script>
+                                        // Quick PIN edit helpers
+                                        var _ujianEditTargetUrl = null;
+                                        var _ujianEditTargetSubject = null;
+
+                                        function showQuickPinEditor(u) {
+                                            try {
+                                                // Hide full edit form, show quick editor
+                                                document.getElementById('formEditMapel').style.display = 'none';
+                                                document.getElementById('editQuickPinContainer').style.display = 'block';
+
+                                                document.getElementById('currentNpsnDisplay').value = u.npsn || '';
+                                                document.getElementById('currentPinDisplay').value = u.pin || '';
+                                                // PIN baru dikosongkan agar diisi manual oleh admin
+                                                try { document.getElementById('newPinDisplay').value = ''; } catch(e) {}
+
+                                                _ujianEditTargetUrl = u.url || '';
+                                                _ujianEditTargetSubject = u.subject || '';
+                                            } catch (e) { console.warn('showQuickPinEditor error', e); }
+                                        }
+
+                                        function hideQuickPinEditor() {
+                                            try {
+                                                document.getElementById('editQuickPinContainer').style.display = 'none';
+                                                document.getElementById('formEditMapel').style.display = 'flex';
+                                                _ujianEditTargetUrl = null;
+                                                _ujianEditTargetSubject = null;
+                                            } catch (e) { console.warn(e); }
+                                        }
+
+                                        document.addEventListener('click', function(e){
+                                            if (!document.getElementById('editQuickPinContainer')) return;
+                                        });
+
+                                        // Bind quick editor buttons (delegated when element exists)
+                                        (function(){
+                                            var btnCancel = document.getElementById('btnCancelQuickEdit');
+                                            var btnSave = document.getElementById('btnSaveQuickPin');
+                                            if (btnCancel) btnCancel.addEventListener('click', function(){ try{ hideQuickPinEditor(); document.getElementById('editMapelFormContainer').style.display = 'none'; ujianEditId = null; }catch(e){} });
+                                            if (btnSave) btnSave.addEventListener('click', async function(){
+                                                try {
+                                                    if (!_ujianEditTargetUrl) { showNotifikasi('Target ujian tidak valid.', '❌ Error', 'error'); return; }
+                                                    var npsn = document.getElementById('currentNpsnDisplay').value.trim();
+                                                    var newPin = document.getElementById('newPinDisplay').value.trim();
+                                                    if (!npsn || !newPin) { showNotifikasi('NPSN dan PIN baru harus diisi semua.', '⚠️ Data Tidak Lengkap', 'warning'); return; }
+                                                    // Call save API: saveExamLinkWithData(url, subject, npsn, pin)
+                                                    var ok = await saveExamLinkWithData(_ujianEditTargetUrl, _ujianEditTargetSubject || '', npsn, newPin);
+                                                    if (ok) {
+                                                        showNotifikasi('PIN Anda berhasil diperbarui.', '✅ Berhasil', 'success');
+                                                        hideQuickPinEditor();
+                                                        // refresh daftar
+                                                        renderDaftarUjianGuru();
+                                                        // Invalidate dropdown cache and reload
+                                                        try { loadExamListDropdown(); } catch(e){}
+                                                    } else {
+                                                        showNotifikasi('Gagal menyimpan PIN ke spreadsheet. Silakan coba lagi.', '❌ Gagal Menyimpan', 'error');
+                                                    }
+                                                } catch (err) { console.error(err); showNotifikasi('Error: ' + err.message, '❌ Terjadi Kesalahan', 'error'); }
+                                            });
+                                        })();
+                                        </script>
                                 <div id="editMapelError" style="color:#ef4444;font-size:13px;font-weight:600;margin-top:8px;display:none;"></div>
                             </form>
                         </div>
@@ -3092,18 +4493,23 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                 </div>
 
                 <script>
-            // Tab switching logic
-            function switchAdminTab(tab) {
-                document.getElementById('adminTabInput').style.display = tab === 'input' ? 'block' : 'none';
-                document.getElementById('adminTabEdit').style.display = tab === 'edit' ? 'block' : 'none';
-                document.getElementById('tabInputMapel').style.background = tab === 'input' ? '#0052CC' : '#e2e8f0';
-                document.getElementById('tabInputMapel').style.color = tab === 'input' ? '#fff' : '#333';
-                document.getElementById('tabEditMapel').style.background = tab === 'edit' ? '#0052CC' : '#e2e8f0';
-                document.getElementById('tabEditMapel').style.color = tab === 'edit' ? '#fff' : '#333';
-                // Reset edit form dan SEMBUNYIKAN form edit mapel
-                document.getElementById('editMapelFormContainer').style.display = 'none';
-                batalEditMapel();
-            }
+                // Tab switching logic
+                // NOTE: automatic PIN generation removed; admin must input PIN manually.
+
+                function switchAdminTab(tab) {
+                    document.getElementById('adminTabInput').style.display = tab === 'input' ? 'block' : 'none';
+                    document.getElementById('adminTabEdit').style.display = tab === 'edit' ? 'block' : 'none';
+                    document.getElementById('tabInputMapel').style.background = tab === 'input' ? '#0052CC' : '#e2e8f0';
+                    document.getElementById('tabInputMapel').style.color = tab === 'input' ? '#fff' : '#333';
+                    // Keep edit tab styled the same as input tab (blue)
+                    try { document.getElementById('tabEditMapel').style.background = '#0052CC'; document.getElementById('tabEditMapel').style.color = '#fff'; } catch(e) {}
+
+                    // Saat beralih ke tab input: tidak lagi auto-fill PIN (masukkan manual)
+
+                    // Reset edit form dan SEMBUNYIKAN form edit mapel
+                    document.getElementById('editMapelFormContainer').style.display = 'none';
+                    batalEditMapel();
+                }
 
             // Edit Mapel logic
             function editUjianGuru(id) {
@@ -3133,15 +4539,18 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                         return (isMatch || isNumericMatch);
                     });
                     if (filtered.length > 0) {
-                        // Tampilkan mapel pertama yang cocok (atau bisa pilih dari list jika mau)
+                        // Tampilkan mapel pertama yang cocok
                         var u = filtered[0];
                         document.getElementById('editNpsnGuru').value = u.npsn;
-                        document.getElementById('editNamaGuru').value = u.subject || '';
-                        document.getElementById('editLinkUjian').value = u.url;
                         document.getElementById('editPinGuru').value = u.pin;
+                        document.getElementById('editPinBaru').value = '';
                         document.getElementById('editMapelFormContainer').style.display = 'block';
                         document.getElementById('editMapelError').style.display = 'none';
                         ujianEditId = u.url; // gunakan url sebagai id unik
+                        // Fokus ke input PIN baru
+                        setTimeout(function() {
+                            document.getElementById('editPinBaru').focus();
+                        }, 100);
                     } else {
                         var editErrEl = document.getElementById('editMapelError');
                         if (editErrEl) {
@@ -3158,37 +4567,59 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                 document.getElementById('editMapelFormContainer').style.display = 'none';
                 ujianEditId = null;
             }
-            document.getElementById('formEditMapel').onsubmit = function(e) {
+            document.getElementById('formEditMapel').onsubmit = async function(e) {
                 e.preventDefault();
                 var npsn = document.getElementById('editNpsnGuru').value.trim();
-                var nama = document.getElementById('editNamaGuru').value.trim();
-                var link = document.getElementById('editLinkUjian').value.trim();
-                var pin = document.getElementById('editPinGuru').value.trim();
+                var pinBaru = document.getElementById('editPinBaru').value.trim();
                 var errorDiv = document.getElementById('editMapelError');
 
-                if (!npsn || !nama || !link || !pin) {
-                    errorDiv.textContent = 'Semua field wajib diisi!';
+                if (!npsn || !pinBaru) {
+                    errorDiv.textContent = 'NPSN dan PIN baru harus diisi!';
                     errorDiv.style.color = '#ef4444';
                     errorDiv.style.display = 'block';
                     return;
                 }
 
-                // Temukan ujian yang sedang diedit berdasarkan `ujianEditId` (bisa berupa url)
-                var u = daftarUjianGuru.find(function(item){
-                    if (!ujianEditId) return false;
-                    return (item.url && item.url === ujianEditId) || (item.id && item.id === ujianEditId);
-                });
-
-                // Jika ditemukan di daftar lokal, update lokal. Jika tidak, tetap lakukan UI refresh.
-                if (u) {
-                    u.npsn = npsn;
-                    u.nama = nama;
-                    u.link = link;
-                    u.pin = pin;
+                if (!/^\d+$/.test(pinBaru)) {
+                    errorDiv.textContent = 'PIN hanya boleh berisi angka!';
+                    errorDiv.style.color = '#ef4444';
+                    errorDiv.style.display = 'block';
+                    return;
                 }
 
-                renderDaftarUjianGuru();
-                batalEditMapel();
+                var submitBtn = this.querySelector('button[type="submit"]');
+                try {
+                    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Menyimpan...'; }
+                    
+                    // Ambil data ujian berdasarkan ujianEditId (URL)
+                    var links = await getExamLinks();
+                    var ujian = links.find(u => u.url === ujianEditId);
+                    
+                    if (!ujian) {
+                        throw new Error('Data ujian tidak ditemukan');
+                    }
+
+                    // Update PIN saja, field lain tetap sama
+                    var ok = await saveExamLinkWithData(ujian.url, ujian.subject, npsn, pinBaru);
+                    if (ok) {
+                        errorDiv.style.display = 'none';
+                        showNotifikasi('PIN berhasil diperbarui!', '✅ Sukses', 'success');
+                        renderDaftarUjianGuru();
+                        batalEditMapel();
+                        // Clear PIN baru field
+                        document.getElementById('editPinBaru').value = '';
+                    } else {
+                        errorDiv.textContent = 'Gagal menyimpan PIN ke spreadsheet!';
+                        errorDiv.style.color = '#ef4444';
+                        errorDiv.style.display = 'block';
+                    }
+                } catch (err) {
+                    errorDiv.textContent = 'Error: ' + (err.message || 'Terjadi kesalahan');
+                    errorDiv.style.color = '#ef4444';
+                    errorDiv.style.display = 'block';
+                } finally {
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Simpan PIN'; }
+                }
             };
             // Default tab
             switchAdminTab('input');
@@ -3207,24 +4638,40 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             </script>
 
             <script>
-            // Data dummy ujian
-            var daftarUjianGuru = [
-                {id:1, npsn:'20531197', nama:'Ujian SMPN 1 Klampis', link:'https://soal1.com', pin:'1983', aktif:true},
-                {id:2, npsn:'20531197', nama:'Ujian Bahasa Indonesia', link:'https://soal2.com', pin:'1983', aktif:false}
-            ];
+            // Data ujian diambil dari spreadsheet via API
+            var daftarUjianGuru = [];
             var ujianEditId = null;
             var hideOtherMapels = false;
 
+            // === GANTI NILAI INI SEBELUM DEPLOY ===
+            var ADMIN_PASSWORD = 'Admin123';
             function openAdminNpsnModal() {
-                var pass = prompt('Password ada di Deskripsi Grup WA Examuna/081232347244, Masukkan Password :');
-                if (!pass) { alert('Aksi dibatalkan'); return; }
+                // Tampilkan NPSN di header modal
+                document.getElementById('adminHeaderNpsn').textContent = currentGuruNpsn || '-';
                 document.getElementById('modalAdminNpsn').style.display = 'block';
                 document.getElementById('formUjianGuru').reset();
                 ujianEditId = null;
                 renderDaftarUjianGuru();
             }
+            
+            // Tutup modal admin tanpa logout (user tetap login)
             function tutupAdminNpsnModal() {
                 document.getElementById('modalAdminNpsn').style.display = 'none';
+                // JANGAN reset currentGuruNpsn dan roleSelect - user tetap login!
+            }
+            
+            // Logout benar-benar (reset session)
+            function logoutGuru() {
+                // Reset session guru
+                currentGuruNpsn = '';
+                roleSelect.value = '';
+                // Tutup modal admin
+                document.getElementById('modalAdminNpsn').style.display = 'none';
+                // showNotifikasi('Logout berhasil. Silakan pilih role untuk login ulang.', '✅ Logout Sukses', 'success');
+                // Auto-refresh halaman ke state awal yang bersih
+                setTimeout(function() {
+                    window.location.reload();
+                }, 300);
             }
             // Tutup modal jika klik di luar konten
             window.onclick = function(event) {
@@ -3249,7 +4696,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                 
                 if (tampilBtn) {
                     tampilBtn.disabled = false;
-                    tampilBtn.innerHTML = 'Tampilkan';
+                    tampilBtn.innerHTML = 'Refresh';
                 }
                 
                 if (fN && fN.value.trim()) {
@@ -3299,16 +4746,18 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                     }
                     var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
                     filtered.forEach(function(u, idx){
-                        var escapedUrl = (u.url||'').replace(/"/g,'&quot;');
-                        var statusHtml = (u.status === 'Aktif' || !u.status)?'<span style="color:#10b981;font-weight:600;">Aktif</span>':'<span style="color:#aaa;">Nonaktif</span>';
-                        html += '<div data-url="'+escapedUrl+'" style="background:#fff;border:1px solid #f1f5f9;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;">'
-                            +'<div style="font-weight:700;color:#0052CC;font-size:15px;">'+(u.subject || '-')+'</div>'
+                        var safeUrl = (u.url||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                        var safeSubject = (u.subject||'-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                        var isAktif = (u.status === 'Aktif' || !u.status);
+                        var statusHtml = isAktif ? '<span style="color:#10b981;font-weight:600;">Aktif</span>' : '<span style="color:#aaa;">Nonaktif</span>';
+                        html += '<div data-url="'+safeUrl+'" style="background:#fff;border:1px solid #f1f5f9;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;">'
+                            +'<div style="font-weight:700;color:#0052CC;font-size:15px;">'+safeSubject+'</div>'
                             +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">'
                                 +'<div style="color:#475569;">'+statusHtml+'</div>'
                                 +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-                                    +'<button onclick="openEditValidation(\''+u.url+'\')" style="background:#f1f5f9;color:#0052CC;border:none;padding:8px 12px;border-radius:5px;font-size:13px;cursor:pointer;">Edit</button>'
-                                    +'<button onclick="deleteExam(\''+u.url+'\', this)" style="background:#ffeef0;color:#ef4444;border:none;padding:8px 12px;border-radius:5px;font-size:13px;cursor:pointer;">Hapus</button>'
-                                    +'<button onclick="toggleStatusExam(\''+u.url+'\', this)" style="background:'+(u.status === 'Aktif' || !u.status ? '#fef9c3' : '#dbeafe')+';color:'+(u.status === 'Aktif' || !u.status ? '#b45309' : '#2563eb')+';border:none;padding:8px 12px;border-radius:5px;font-size:13px;cursor:pointer;">'+(u.status === 'Aktif' || !u.status ? 'Nonaktifkan' : 'Aktifkan')+'</button>'
+                                    +'<button data-url="'+safeUrl+'" onclick="openEditValidation(this.dataset.url, this)" style="background:#f1f5f9;color:#0052CC;border:none;padding:8px 12px;border-radius:5px;font-size:13px;cursor:pointer;">Edit</button>'
+                                    +'<button data-url="'+safeUrl+'" onclick="deleteExam(this.dataset.url, this)" style="background:#ffeef0;color:#ef4444;border:none;padding:8px 12px;border-radius:5px;font-size:13px;cursor:pointer;">Hapus</button>'
+                                    +'<button data-url="'+safeUrl+'" onclick="toggleStatusExam(this.dataset.url, this)" style="background:'+(isAktif ? '#fef9c3' : '#dbeafe')+';color:'+(isAktif ? '#b45309' : '#2563eb')+';border:none;padding:8px 12px;border-radius:5px;font-size:13px;cursor:pointer;">'+(isAktif ? 'Nonaktifkan' : 'Aktifkan')+'</button>'
                                 +'</div>'
                             +'</div>'
                         +'</div>';
@@ -3326,8 +4775,11 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                 var pin = document.getElementById('filterPinAdmin').value.trim();
                 var tampilBtn = document.getElementById('btnTampilkanMapelAdmin');
                 
+                // Reset flag agar semua mapel bisa ditampilkan
+                hideOtherMapels = false;
+                
                 if (!npsn || !pin) {
-                    alert('NPSN dan PIN harus diisi!');
+                    showNotifikasi('NPSN dan PIN harus diisi!', '⚠️ Data Tidak Lengkap', 'warning');
                     return;
                 }
                 
@@ -3356,25 +4808,20 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                     });
 
                     if (found) {
+                        // Tampilkan daftar mapel, tunggu user klik tombol "Edit"
                         renderDaftarUjianGuru();
                     } else {
-                        const availablePairs = links.map(e => `${normalize(e.npsn)}/${normalize(e.pin)}`).slice(0, 5);
-                        console.log('--- DEBUG VALIDATION (ADMIN EDIT) ---');
-                        console.log('Input NPSN:', npsn);
-                        console.log('Input PIN:', pin);
-                        console.log('All pairs (sample):', availablePairs);
-
-                        alert('NPSN/PIN tidak ditemukan.');
+                        showNotifikasi('NPSN/PIN tidak ditemukan. Pastikan data sudah terdaftar di sistem.', '❌ Login Gagal', 'error');
                         var container = document.getElementById('daftarUjianGuruContainer');
                         if (container) container.innerHTML = '';
                     }
                 }).catch(err => {
                     console.error('Admin edit validation error:', err);
-                    alert('Terjadi kesalahan sistem.');
+                    showNotifikasi('Terjadi kesalahan sistem. Silakan coba lagi nanti.', '❌ Error Sistem', 'error');
                 }).finally(function(){
                     if (tampilBtn) {
                         tampilBtn.disabled = false;
-                        tampilBtn.innerHTML = 'Tampilkan Mapel';
+                        tampilBtn.innerHTML = 'Refresh';
                     }
                 });
             }
@@ -3401,12 +4848,25 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             }
 
             // Global: langsung buka form edit mapel tanpa meminta validasi NPSN/PIN
-            function openEditValidation(targetUrl) {
+            async function openEditValidation(targetUrl, btnElem) {
+                var origHTML, origDisabled;
+                if (btnElem) {
+                    try {
+                        origHTML = btnElem.innerHTML;
+                        origDisabled = btnElem.disabled;
+                        btnElem.innerHTML = '<span class="btn-spinner"></span>Memuat...';
+                        btnElem.disabled = true;
+                    } catch (e) {}
+                }
                 try {
                     // Langsung panggil fungsi edit berdasarkan url tanpa modal validasi
-                    editUjianGuruByUrl(targetUrl);
+                    await editUjianGuruByUrl(targetUrl);
                 } catch (e) {
                     console.warn('openEditValidation error', e);
+                } finally {
+                    if (btnElem) {
+                        try { btnElem.innerHTML = origHTML; btnElem.disabled = origDisabled; } catch(e){}
+                    }
                 }
             }
             function closeModalEditValidation() {
@@ -3443,24 +4903,23 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             }
             function editUjianGuruByUrl(targetUrl) {
                 switchAdminTab('edit');
-                getExamLinks().then(function(links){
+                return getExamLinks().then(function(links){
                     var u = links.find(function(exam){ return (exam.url||'') === targetUrl; });
                     if (u) {
-                        // Isi form edit dan juga tampilkan daftar berdasarkan NPSN/PIN yang divalidasi
+                        // Hanya isi NPSN dan PIN saat ini, PIN baru kosong
                         document.getElementById('editNpsnGuru').value = u.npsn || '';
-                        document.getElementById('editNamaGuru').value = u.subject || '';
-                        document.getElementById('editLinkUjian').value = u.url || '';
                         document.getElementById('editPinGuru').value = u.pin || '';
-                        // Set nilai validasi sehingga renderDaftarUjianGuru menampilkan baris terkait
-                        if (document.getElementById('editValidasiNpsn')) document.getElementById('editValidasiNpsn').value = u.npsn || '';
-                        if (document.getElementById('editValidasiPin')) document.getElementById('editValidasiPin').value = u.pin || '';
+                        document.getElementById('editPinBaru').value = '';
                         document.getElementById('editMapelFormContainer').style.display = 'block';
                         document.getElementById('editMapelError').style.display = 'none';
                         ujianEditId = u.url;
-                        // hide other mapels and render only the selected one
+                        // Fokus ke input PIN baru
+                        setTimeout(function() {
+                            document.getElementById('editPinBaru').focus();
+                        }, 100);
                         hideOtherMapels = true;
-                        // Render daftar agar user melihat Nama Guru/Mapel, Status dan Aksi (tersembunyi jika lainnya)
                         renderDaftarUjianGuru();
+                        return true;
                     } else {
                         var errEl = document.getElementById('editMapelError');
                         if (errEl) {
@@ -3469,7 +4928,11 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                             errEl.style.display = 'block';
                         }
                         ujianEditId = null;
+                        return false;
                     }
+                }).catch(function(err){
+                    console.warn('editUjianGuruByUrl error', err);
+                    throw err;
                 });
             }
 
@@ -3481,7 +4944,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                 var link = document.getElementById('linkUjian').value.trim();
                 var pin = document.getElementById('pinGuru').value.trim();
                 if (!npsn || !nama || !link || !pin) {
-                    alert('Semua field wajib diisi!');
+                    showNotifikasi('Semua field wajib diisi!', '⚠️ Data Tidak Lengkap', 'warning');
                     return;
                 }
                 // Kirim ke spreadsheet via API
@@ -3495,14 +4958,15 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
 
                         const result = await saveExamLinkWithData(link, nama, npsn, pin);
                         if (result) {
-                            alert('Data Mapel sudah tersimpan');
+                            showNotifikasi('Data Mapel sudah tersimpan sebelumnya.', 'ℹ️ Info', 'info');
                             document.getElementById('formUjianGuru').reset();
+                            // Setelah tersimpan, biarkan field PIN kosong agar diisi manual berikutnya
                             renderDaftarUjianGuru();
                         } else {
-                            alert('❌ Gagal menyimpan data ke spreadsheet!');
+                            showNotifikasi('Gagal menyimpan data ke spreadsheet! Silakan coba lagi.', '❌ Gagal', 'error');
                         }
                     } catch (err) {
-                        alert('❌ Error: ' + err.message);
+                        showNotifikasi('Error: ' + err.message, '❌ Terjadi Kesalahan', 'error');
                     } finally {
                         var submitBtn = document.querySelector('#formUjianGuru button[type="submit"]');
                         submitBtn.innerHTML = 'Tambah / Simpan';
@@ -3765,9 +5229,20 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                     var npsnInput = document.getElementById('npsnInput');
                     if (npsnInput) npsnInput.focus();
                 }
-                // Kunci dropdown setiap kali kembali ke halaman utama
+                // Kunci dan reset dropdown setiap kali kembali ke halaman utama
                 var dropdown = document.getElementById('examListDropdown');
-                if (dropdown) dropdown.disabled = true;
+                if (dropdown) {
+                    dropdown.disabled = true;
+                    try { dropdown.value = ''; } catch(e){}
+                }
+
+                // Sembunyikan grup dropdown dan label pilih ujian, tampilkan label masuk ujian
+                var dropdownGroup = document.getElementById('examDropdownGroup');
+                if (dropdownGroup) dropdownGroup.style.display = 'none';
+                var labelPilihUjian = document.getElementById('labelPilihUjian');
+                if (labelPilihUjian) labelPilihUjian.style.display = 'none';
+                var labelMasukUjian = document.getElementById('labelMasukUjian');
+                if (labelMasukUjian) labelMasukUjian.style.display = 'block';
             }
 
             // Jika ada navigasi ke halaman utama, pastikan validasi tetap muncul
@@ -3800,10 +5275,6 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                 const normalizeNumeric = (val) => (val || '').toString().replace(/\D/g, '');
 
                 getExamLinks().then(function(links) {
-                    console.log('--- DEBUG VALIDATION (MAIN) ---');
-                    console.log('Input NPSN:', npsn);
-                    console.log('Input PIN:', pin);
-
                     const filtered = links.filter(exam => {
                         const examNpsn = normalize(exam.npsn);
                         const examPin = normalize(exam.pin);
@@ -3834,13 +5305,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                         } else if (typeof renderExamListDropdown === 'function') {
                             renderExamListDropdown(filtered);
                         }
-                        
-                        console.log('✅ Validation success (Main screen)');
                     } else {
-                        const activeLinks = links.filter(exam => (exam.status === 'Aktif' || !exam.status));
-                        const availablePairs = activeLinks.map(e => `${normalize(e.npsn)}/${normalize(e.pin)}`).slice(0, 5);
-                        console.log('❌ No match (Main screen). Active pairs (sample):', availablePairs);
-
                         msg.textContent = 'NPSN/PIN tidak ditemukan atau status ujian nonaktif.';
                         msg.style.color = '#ffffff';
                         msg.style.display = 'block';
@@ -3896,6 +5361,89 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
         let studentId = '';
         let isExitingNormally = false; // Flag untuk mencegah alert saat exit normal
         let currentEditingUrl = null; // Store URL yang sedang diedit
+        let examZoomLevel = 1;
+        const EXAM_ZOOM_MIN = 0.7;
+        const EXAM_ZOOM_MAX = 1.8;
+        const EXAM_ZOOM_STEP = 0.1;
+
+        function clampExamZoom(value) {
+            return Math.min(EXAM_ZOOM_MAX, Math.max(EXAM_ZOOM_MIN, value));
+        }
+
+        function applyExamZoom() {
+            const iframe = document.getElementById('examIframe');
+            const zoomValueEl = document.getElementById('examZoomValue');
+            const zoomInBtn = document.getElementById('zoomInBtn');
+            const zoomOutBtn = document.getElementById('zoomOutBtn');
+            if (!iframe) return;
+
+            const safeZoom = clampExamZoom(examZoomLevel);
+            examZoomLevel = Math.round(safeZoom * 100) / 100;
+
+            iframe.style.transform = 'scale(' + examZoomLevel + ')';
+            iframe.style.width = (100 / examZoomLevel) + '%';
+            iframe.style.height = (100 / examZoomLevel) + '%';
+
+            if (zoomValueEl) {
+                zoomValueEl.textContent = Math.round(examZoomLevel * 100) + '%';
+            }
+            if (zoomInBtn) zoomInBtn.disabled = examZoomLevel >= EXAM_ZOOM_MAX;
+            if (zoomOutBtn) zoomOutBtn.disabled = examZoomLevel <= EXAM_ZOOM_MIN;
+        }
+
+        function changeExamZoom(delta) {
+            examZoomLevel = clampExamZoom(examZoomLevel + delta);
+            applyExamZoom();
+        }
+
+        function resetExamZoom() {
+            examZoomLevel = 1;
+            applyExamZoom();
+        }
+
+        /* Theme / Slim helpers for exam zoom control
+           - setZoomControlTheme('light'|'dark')
+           - setZoomControlSlim(true|false)
+           Accessible as global functions for quick toggling. */
+        function setZoomControlTheme(theme) {
+            try {
+                var el = document.getElementById('examZoomControls');
+                if (!el) return;
+                el.classList.remove('light', 'dark');
+                if (theme === 'dark') el.classList.add('dark');
+                else el.classList.add('light');
+            } catch (e) { console.warn('setZoomControlTheme error', e); }
+        }
+
+        function setZoomControlSlim(enable) {
+            try {
+                var el = document.getElementById('examZoomControls');
+                if (!el) return;
+                if (enable) el.classList.add('slim'); else el.classList.remove('slim');
+            } catch (e) { console.warn('setZoomControlSlim error', e); }
+        }
+
+        function applyPreferredZoomControlTheme() {
+            try {
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    setZoomControlTheme('dark');
+                } else {
+                    setZoomControlTheme('light');
+                }
+            } catch (e) { }
+        }
+
+        // Apply defaults on DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            applyPreferredZoomControlTheme();
+            // smaller screens: enable slim by default
+            try { if (window.innerWidth && window.innerWidth < 480) setZoomControlSlim(true); } catch(e){}
+        });
+
+        // Expose for console/use by other scripts
+        window.setZoomControlTheme = setZoomControlTheme;
+        window.setZoomControlSlim = setZoomControlSlim;
+        window.applyPreferredZoomControlTheme = applyPreferredZoomControlTheme;
 
         // ===== FUNGSI MODAL DAFTAR UJIAN (Logo Click) =====
         
@@ -3971,7 +5519,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             if (btnElem) {
                 origText = btnElem.innerHTML;
                 origDisabled = btnElem.disabled;
-                btnElem.innerHTML = 'Proses...';
+                btnElem.innerHTML = '<span class="btn-spinner"></span>Proses...';
                 btnElem.disabled = true;
             }
 
@@ -4017,14 +5565,14 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             event.preventDefault();
             
             if (!currentEditingUrl) {
-                alert('❌ Error: URL tidak ditemukan');
+                showNotifikasi('URL tidak ditemukan di database.', '❌ Error', 'error');
                 return;
             }
             
             const newSubject = document.getElementById('editExamSubject').value.trim();
             
             if (!newSubject) {
-                alert('⚠️ Nama mata pelajaran harus diisi!');
+                showNotifikasi('Nama mata pelajaran harus diisi!', '⚠️ Data Tidak Lengkap', 'warning');
                 return;
             }
             
@@ -4038,7 +5586,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                 const result = await updateExamSubject(currentEditingUrl, newSubject);
                 
                 if (result) {
-                    alert('✅ Nama mata pelajaran berhasil diperbarui!');
+                    showNotifikasi('Nama mata pelajaran berhasil diperbarui!', '✅ Sukses', 'success');
                     closeEditModal();
                     
                     // Refresh exam list and dropdown
@@ -4063,7 +5611,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             if (btnElem) {
                 origText = btnElem.innerHTML;
                 origDisabled = btnElem.disabled;
-                btnElem.innerHTML = 'Proses...';
+                btnElem.innerHTML = '<span class="btn-spinner"></span>Proses...';
                 btnElem.disabled = true;
             }
 
@@ -4163,7 +5711,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             if (btnElem) {
                 origText = btnElem.innerHTML;
                 origDisabled = btnElem.disabled;
-                btnElem.innerHTML = 'Proses...';
+                btnElem.innerHTML = '<span class="btn-spinner"></span>Proses...';
                 btnElem.disabled = true;
             }
 
@@ -4712,6 +6260,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
 		document.getElementById('examTitle').textContent = 'EXAMUNA';
 		document.getElementById('examUrlDisplay').textContent = subjectName; // Tampilkan nama mapel
 		document.getElementById('examIframe').src = url;
+            resetExamZoom();
 
             // Fallback: jika request awal gagal, minta satu ketukan user untuk memicu fullscreen ulang
             if (!fullscreenGranted && ENFORCE_FULLSCREEN_POLICY) {
@@ -4973,12 +6522,11 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                 }
             }, true);
             
-            // Prevent context menu (right click)
+            // Allow context menu (right click). Log attempt but do not block.
             document.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+                try { if (isEditableTarget && isEditableTarget(e.target)) return; } catch(err) {}
                 if (ENABLE_VIOLATION_LOG) { logViolation('Context Menu', 'Right-click menu attempted', 'Medium'); }
-                return false;
+                // do not prevent default; allow native context menu
             }, true);
             
             // Detect screenshot via Print Screen key
@@ -5054,10 +6602,26 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             document.body.style.mozUserSelect = 'none';
             document.body.style.msUserSelect = 'none';
             
-            // Block clipboard access for screenshots
+            // Helper: apakah target editable (input/textarea/button/select/contenteditable)
+            function isEditableTarget(t) {
+                if (!t) return false;
+                // Normalize text node
+                if (t.nodeType === 3) t = t.parentNode;
+                try {
+                    if (t.closest) {
+                        var el = t.closest('input, textarea, button, select, [contenteditable]');
+                        if (el) return true;
+                    }
+                } catch (err) {}
+                var tag = (t.tagName || '').toUpperCase();
+                return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT' || t.isContentEditable === true;
+            }
+
+            // Block clipboard access for screenshots but allow copy inside inputs/textareas
             document.addEventListener('copy', (e) => {
+                if (isEditableTarget(e.target)) return; // izinkan copy di dalam input/textarea
+                try { if (e.clipboardData) e.clipboardData.setData('text/plain', 'COPY NOT ALLOWED'); } catch (err) {}
                 e.preventDefault();
-                e.clipboardData.setData('text/plain', 'COPY NOT ALLOWED');
                 if (ENABLE_VIOLATION_LOG) { logViolation('Copy Attempt', 'User attempted to copy content', 'Medium'); }
                 return false;
             });
@@ -5096,26 +6660,28 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                 }
             });
 
-            // Prevent copy/paste/cut
+            // Prevent copy/cut/paste/contextmenu globally but allow on inputs/textareas/contenteditable
             document.addEventListener('copy', (e) => {
+                if (isEditableTarget(e.target)) return; // allow in editable fields
                 e.preventDefault();
                 return false;
             });
 
             document.addEventListener('cut', (e) => {
+                if (isEditableTarget(e.target)) return; // allow in editable fields
                 e.preventDefault();
                 return false;
             });
 
             document.addEventListener('paste', (e) => {
+                if (isEditableTarget(e.target)) return; // allow paste in inputs/textareas
                 e.preventDefault();
                 return false;
             });
 
-            // Prevent right-click
+            // Allow right-click globally; editable fields continue to work as normal
             document.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                return false;
+                // no blocking; allow native context menu everywhere
             });
 
             // Prevent window blur (Alt+Tab detection)
@@ -5138,7 +6704,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
 
             // Prevent text selection pada exam screen
             document.getElementById('examScreen').addEventListener('selectstart', (e) => {
-                if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                if (!isEditableTarget(e.target)) {
                     e.preventDefault();
                     return false;
                 }
@@ -5220,39 +6786,16 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                     });
                 }
 
-                // Prevent long press context menu (Android)
+                // Allow long press context menu (Android) — do not block
                 document.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
+                    try { if (isEditableTarget && isEditableTarget(e.target)) return; } catch(err) {}
+                    // do not prevent default; allow native long-press context menu
                 }, { passive: false });
 
-                // Prevent touch hold to copy (Android)
-                let touchTimer;
-                document.addEventListener('touchstart', (e) => {
-                    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SELECT') {
-                        touchTimer = setTimeout(() => {
-                            // Long press blocked
-                            e.preventDefault();
-                        }, 500);
-                    }
-                }, { passive: false });
+                // No longer blocking touch hold — allow native long-press/paste on mobile
+                // touch timer handlers removed to permit normal paste/select behavior.
 
-                document.addEventListener('touchend', () => {
-                    clearTimeout(touchTimer);
-                });
-
-                document.addEventListener('touchmove', () => {
-                    clearTimeout(touchTimer);
-                });
-
-                // Prevent text selection on touch (Android)
-                document.addEventListener('selectionchange', () => {
-                    const selection = window.getSelection();
-                    if (selection.toString().length > 0 && document.getElementById('examScreen').classList.contains('active')) {
-                        selection.removeAllRanges();
-                    }
-                });
+                // Do not forcibly clear selection — allow copy/paste on mobile.
 
                 // Prevent pull-to-refresh (Android Chrome)
                 let startY = 0;
@@ -5577,7 +7120,9 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
 
         // Confirm Exit — sekarang membuka modal PIN
         function confirmExit() {
-            bukaPinLogoutModal();
+            if (confirm('Yakin anda akan keluar ?')) {
+                exitExam();
+            }
         }
 
         // Exit Exam
@@ -5617,6 +7162,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                 const footer = document.querySelector('.app-footer');
                 if (footer) footer.style.display = 'block';
             } catch (e) {}
+            resetExamZoom();
 
             const duration = Date.now() - examStartTime;
             console.log(`Exam ended. Duration: ${Math.floor(duration / 1000)} seconds`);
@@ -5666,26 +7212,14 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
         }
 
         // Prevent page unload
-        window.addEventListener('beforeunload', (e) => {
-            if (document.getElementById('examScreen').classList.contains('active')) {
-                e.preventDefault();
-                e.returnValue = '';
-                return '';
-            }
-        });
-        
-        // Debounce helper untuk event yang sering terpanggil
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
+        // DISABLED: Sembunyikan warning saat keluar ujian
+        // window.addEventListener('beforeunload', (e) => {
+        //     if (document.getElementById('examScreen').classList.contains('active')) {
+        //         e.preventDefault();
+        //         e.returnValue = '';
+        //         return '';
+        //     }
+        // });
         
         // ===== PERFORMANCE OPTIMIZATION HELPERS =====
         
@@ -5798,8 +7332,8 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
             } catch (e) {}
 
             btn.disabled = true;
-            var oldText = btn.textContent;
-            btn.textContent = '...';
+            var oldHTML = btn.innerHTML;
+            btn.innerHTML = '<span class="btn-spinner"></span>';
 
             jsonpFetch(SCRIPT_URL + '?action=toggleStatus&url=' + encodeURIComponent(url))
                 .then(function(res) {
@@ -5817,7 +7351,7 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                 .catch(function(err) {
                     alert('Gagal mengubah status: ' + err);
                     btn.disabled = false;
-                    btn.textContent = oldText;
+                    try { btn.innerHTML = oldHTML; } catch(e){}
                 });
         }
 
@@ -6076,7 +7610,12 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
                 }
                 if(e.key === 'F11'){ e.preventDefault(); e.stopPropagation(); logViolation('blocked_shortcut','F11'); return false; }
             }, { capture: true });
-            document.addEventListener('contextmenu', function(e){ if(examLocked) { e.preventDefault(); e.stopImmediatePropagation(); return false; } e.preventDefault(); logViolation('contextmenu','right_click'); }, { capture: true });
+            document.addEventListener('contextmenu', function(e){ 
+                if(examLocked) { e.preventDefault(); e.stopImmediatePropagation(); return false; }
+                try { if (isEditableTarget && isEditableTarget(e.target)) return; } catch(err) {}
+                if (ENABLE_VIOLATION_LOG) { logViolation('contextmenu','right_click'); }
+                // allow native context menu (do not preventDefault)
+            }, { capture: true });
         }
 
         // Prevent links opening in new tab
@@ -6096,5 +7635,87 @@ document.getElementById('formAksesUjian').onsubmit = function(e) {
 
     })();
     </script>
+    <script>
+    (function(){
+        const urlRegex = /(?:https?:\/\/|www\.)\S+|\b\S+\.(?:com|net|org|edu|gov|id|io|co)(?:\/\S*)?/i;
+
+        function findOrCreateDetectedInput(){
+            let el = document.getElementById('detectedLink');
+            if(!el){
+                el = document.createElement('input');
+                el.type = 'text';
+                el.id = 'detectedLink';
+                el.style.position = 'absolute';
+                el.style.left = '-9999px';
+                el.style.width = '1px';
+                el.style.height = '1px';
+                el.setAttribute('aria-hidden','true');
+                document.body.appendChild(el);
+            }
+            return el;
+        }
+
+        function handlePasteEvent(e){
+            const text = (e.clipboardData || window.clipboardData).getData('text') || '';
+            const m = text.match(urlRegex);
+            if(m){
+                // allow paste, but record detected url
+                const detected = m[0];
+                const ta = e.target;
+                try{ ta.dataset.lastPastedUrl = detected; }catch(_){ }
+                const out = findOrCreateDetectedInput();
+                out.value = detected;
+                try{ ta.dispatchEvent(new CustomEvent('linkpasted',{detail:{url:detected}})); }catch(_){ }
+            }
+            // do not prevent default: allow normal paste behavior
+        }
+
+        function handleInputEvent(e){
+            const ta = e.target;
+            const m = ta.value.match(urlRegex);
+            const out = findOrCreateDetectedInput();
+            out.value = m ? m[0] : '';
+        }
+
+        document.querySelectorAll('textarea').forEach(function(ta){
+            ta.addEventListener('paste', handlePasteEvent);
+            ta.addEventListener('drop', function(e){
+                const text = e.dataTransfer && e.dataTransfer.getData('text') || '';
+                const m = text.match(urlRegex);
+                if(m){
+                    ta.dataset.lastPastedUrl = m[0];
+                    findOrCreateDetectedInput().value = m[0];
+                }
+            });
+            ta.addEventListener('input', handleInputEvent);
+        });
+    })();
+    </script>
+
+    <!-- Zoom control removed -->
+    <!-- Zoom control removed -->
+    <style>
+    /* Ensure Kelola Ujian modal actions are horizontal and centered on desktop */
+    @media (min-width: 700px) {
+        #modalAdminNpsn #formUjianGuru .form-actions,
+        #modalAdminNpsn .form-actions {
+            grid-column: 1/3 !important;
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: center !important;
+            align-items: center !important;
+            gap: 12px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            flex-wrap: nowrap !important;
+        }
+        #modalAdminNpsn #formUjianGuru .form-actions .btn,
+        #modalAdminNpsn .form-actions .btn {
+            flex: 0 1 200px !important;
+            max-width: 240px !important;
+            min-width: 120px !important;
+        }
+    }
+    </style>
 </body>
 </html>
